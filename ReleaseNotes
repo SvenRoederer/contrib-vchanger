@@ -1,4 +1,18 @@
- Release Notes for vchanger 1.0.1                  2015-06-09
+ Release Notes for vchanger 1.0.2                  2018-06-14
+
+ Release 1.0.2
+ 
+ This is a bug fix release, fixing three issues found in version 1.0.1
+ and improving volume label formatting for CREATEVOLS command and logging
+ of udev/UUID mountpoint discovery.
+
+ Bugs Fixed:
+
+     13  LOAD command allows loading slot into multiple drives
+     14  Hang when bconsole called to update slots
+     15  Race condition in bconsole call may hang vchanger
+
+ ==================================================================
 
  Release 1.0.1
  
@@ -6,7 +20,7 @@
  Additionally, the Windows installer was fixed to correctly install on
  64-bit Windows and create Start Menu items.
 
-Bugs Fixed:
+ Bugs Fixed:
 
       9  Vchanger may hang when issuing commands to Bacula
      10  uuidlookup.c compilation failure on FreeBSD 9.3

@@ -1,7 +1,7 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 <html>
   <head>
-    <meta content="text/html; charset=windows-1252" http-equiv="content-type">
+    <meta http-equiv="content-type" content="text/html; charset=windows-1252">
     <title></title>
     <meta name="CREATED" content="20061109;11301500">
     <meta name="CHANGEDBY" content="Josh Fisher">
@@ -22,12 +22,18 @@ UL.no_image { list-style:none; }
 
   </style>
   </head>
-  <body style="                               font-family: Arial,Helvetica,sans-serif"
+  <body style="                               font-family: Arial,Helvetica,sans-serif"
     lang="en-US">
     <p style="font-size:150%; font-weight:bold;">Vchanger Howto</p>
     <p style="font-weight:bold; margin-bottom:0;">Josh Fisher</p>
     <p>&lt;jfisher at jaybus dot com&gt;</p>
     <p style="font-weight:bold;">Revision History</p>
+    <p class="p_zero_bottom">Revision 1.0.2 2018-06-14</p>
+    <p class="p_indent">Documented changes related to version 1.0.2 of the
+      software. This release fixes a few bugs affecting interaction with
+      bconsole, changes the default formatting of the barcode labels for new
+      volumes, and adds additional logging of udev/UUID mountpoint discovery
+      steps.</p>
     <p class="p_zero_bottom">Revision 1.0.1 2015-06-09</p>
     <p class="p_indent">Documented changes related to version 1.0.1 of the
       software. This is a minor bug fix release.</p>
@@ -172,7 +178,7 @@ Autochanger
       Interface to act as a virtual autochanger, using files on disk storage in
       place of tapes.</p>
     <h2><a name="copyright"></a>1.1 Copyright And License</h2>
-    <p>This document, Vchanger<em>HOWTO</em>, is Copyright (c) 2008-2015 by <em><span
+    <p>This document, Vchanger<em>HOWTO</em>, is Copyright (c) 2008-2017 by <em><span
           style="font-style: normal">Josh Fisher</span></em>. Permission is
       granted to copy, distribute and/or modify this document under the terms of
       the GNU Free Documentation License, Version 1.1 or any later version
@@ -195,11 +201,11 @@ Autochanger
 Users
         e-mail list</a> with bug reports, testing, and suggestions.</p>
     <p>Thanks, also, to all those who frequent the <a href="https://lists.sourceforge.net/lists/listinfo/bacula-users">Bacula
-        User's e-mail list</a>, and of course to Kern Sibbald and the other <a
+        User's e-mail list</a>, and of course to Kern Sibbald and the other <a
         href="http://www.bacula.org/">Bacula</a> developers.</p>
-    <p>Bacula<sub>®</sub> is a registered trademark of Kern Sibbald.</p>
-    <p>Windows<sub>®</sub> is a registered trademark of Microsoft Corporation in
-      the United States and other countries.</p>
+    <p>Bacula<sub>&reg;</sub> is a registered trademark of Kern Sibbald.</p>
+    <p>Windows<sub>&reg;</sub> is a registered trademark of Microsoft
+      Corporation in the United States and other countries.</p>
     <h2><a name="feedback"></a>1.4 Feedback</h2>
     <p><a href="https://lists.sourceforge.net/lists/listinfo/vchanger-users">Vchanger
 Users
@@ -244,7 +250,7 @@ Users
       a single tape or volume file.</p>
     <h1><a name="overview"></a>3. Overview</h1>
     <p>The Bacula Storage Daemon controls an autochanger by invoking a script or
-      program, passing it command line arguments defined by the <a target="_blank"
+      program, passing it command line arguments defined by the <a target="_blank"
         href="http://www.bacula.org/7.0.x-manuals/en/main/Autochanger_Resource.html#SECTION001830000000000000000">Bacula
 Autochanger
         Interface</a>. The interface defines a set of commands and associated
@@ -361,7 +367,7 @@ Autochanger
         </span>may read or write only one volume at a time.</p>
     <p>Because this single volume restriction is not technically necessary for a
       disk filesystem directory, one could define several <span style="font-style: italic; font-weight: bold;">Device
-        </span>resources, all specifying the same directory path as their <span
+        </span>resources, all specifying the same directory path as their <span
         style="font-style: italic; font-weight: bold;">Archive Device</span>.
       Each of these <span style="font-weight: bold; font-style: italic;">Device
       </span>resources could have one volume file opened at a time. This will
@@ -453,19 +459,20 @@ Device {
         Device</span>. That in turn means that all of the autochanger's <span style="font-style: italic; font-weight: bold;">Devices</span>
       could not be associated to a single <span style="font-style: italic; font-weight: bold;">Storage
         </span>resource<span style="font-style: italic;"> </span>in the
-      Director configuration, and so defeats the purpose. </p>
+      Director configuration. </p>
     <h2><a name="native_autochanger"></a>3.2. Why vchanger?</h2>
     <p>Because Bacula currently requires a <span style="font-style: italic; font-weight: bold;">Storage
         </span>resource to specify a single <span style="font-style: italic; font-weight: bold;">Media
         Type</span>, the native virtual autochanger is, for practical purposes,
-      limited to utilizing a single directory as volume file storage. If volume
-      files are contained in multiple filesystems, such as removable drives,
-      then those filesystems can only be mounted at that directory one at a
-      time. With vchanger, an unlimited number of filesystems may be
-      simultaneously mounted at different mount point directories with all
-      volume files on all filesystems having the same <span style="font-style: italic; font-weight: bold;">Media
-        Type</span>. This allows an unlimited number of simultaneously available
-      volume files and an unlimited number of <span style="font-style: italic; font-weight: bold;">Device
+      limited to utilizing a single directory as volume file storage for a
+      particular <i><b>Media Type</b></i>. If volume files are contained in
+      multiple filesystems, such as removable drives, then those filesystems can
+      only be mounted at that directory one at a time. With vchanger, an
+      unlimited number of filesystems may be simultaneously mounted at different
+      mount point directories with all volume files on all filesystems having
+      the same <span style="font-style: italic; font-weight: bold;">Media Type</span>.
+      This allows an unlimited number of simultaneously available volume files
+      and an unlimited number of <span style="font-style: italic; font-weight: bold;">Device
         </span>resources (virtual drives), where any volume file on any
       filesystem can be "loaded" into any of the autochanger's <span style="font-style: italic; font-weight: bold;">Device
         </span>resources using only a single <span style="font-style: italic; font-weight: bold;">Storage
@@ -476,9 +483,10 @@ Device {
         additional filesystems or directories</li>
       <li>Scaling available volume storage space requires no change to the
         Bacula configuration and no restart or reload of any Bacula daemons</li>
-      <li>All volumes have the same Media Type and so can be moved between
-        filesystems without any need to update volume information in the Bacula
-        catalog.</li>
+      <li>All volumes have the same <i><b>Media Type</b></i> and so can be
+        moved between filesystems without any need to update volume information
+        in the Bacula catalog (other than an <i>update slots</i> command in
+        bconsole to update the volume's slot number).</li>
       <li>Filesystems can be specified by UUID and vchanger will query the OS
         for the mount point when needed. This allows any type of automounting to
         be used and the filesystems to be mounted at arbitrary paths.</li>
@@ -496,19 +504,19 @@ Device {
       available volumes. Also, when vchanger is used to add volume files to an
       autochanger, a <span style="font-style: italic;">label barcodes</span>
       command is automatically issued to label the new volumes.</p>
-    <p>Vchanger also automates the generation of udev rules and scripts that may
-      be used to automatically mount and unmount the filesystems defined in
-      autochanger configuration files. When a removable drive is attached or
-      detached, a script may be launched by udev to mount or unmount the drive's
-      partition and issue an <span style="font-style: italic;">update slots</span>
-      command via bconsole. These udev rules and scripts allow the attaching and
-      detaching of&nbsp; removable drives used by vchanger to be a true
-      plug-n-play operation.<br>
+    <p>Vchanger also provides scripts that may be used to automate the
+      generation of udev rules and automatically mount and unmount the
+      filesystems defined in autochanger configuration files. When a removable
+      drive is attached or detached, a script may be launched by udev to mount
+      or unmount the drive's partition and issue an <span style="font-style: italic;">update
+        slots</span> command via bconsole. These udev rules and scripts allow
+      the attaching and detaching of&nbsp; removable drives used by vchanger to
+      be a true plug-n-play operation.<br>
     </p>
     <h1><a name="implementation"></a>4. Virtual Autochanger Implementation</h1>
     <p>Vchanger implements the following <a target="_blank" href="http://www.bacula.org/7.0.x-manuals/en/main/Autochanger_Resource.html#SECTION001830000000000000000">Bacula
         Autochanger Interface</a> commands:</p>
-    <table style="margin-left: 2rem;" border="0" cellpadding="0" cellspacing="0"
+    <table style="margin-left: 2rem;" cellspacing="0" cellpadding="0" border="0"
       width="664">
       <colgroup><col width="132"> <col width="532"> </colgroup>
       <tbody>
@@ -557,7 +565,7 @@ Device {
     </table>
     <p style="margin-top: 3ex;">Vchanger also implements the following
       undocumented command defined in mtx-changer since Bacula version 5.1.0:</p>
-    <table style="margin-left: 2rem;" border="0" cellpadding="0" cellspacing="0"
+    <table style="margin-left: 2rem;" cellspacing="0" cellpadding="0" border="0"
       width="664">
       <colgroup><col width="132"> <col width="532"> </colgroup>
       <tbody>
@@ -574,8 +582,8 @@ Device {
     <p style="margin-top: 3ex;">Vchanger also implements three vchanger-specific
       extended commands that are not part of the documented Bacula Autochanger
       Interface:</p>
-    <table style="page-break-before: auto; page-break-after: auto; margin-left: 2rem;"
-      border="0" cellpadding="0" cellspacing="0" width="664">
+    <table style="page-break-before: auto; page-break-after: auto; margin-left: 2rem;"
+      cellspacing="0" cellpadding="0" border="0" width="664">
       <colgroup><col width="132"> <col width="532"> </colgroup>
       <tbody>
         <tr valign="top">
@@ -607,7 +615,7 @@ Device {
     </table>
     <p style="margin-top: 3ex;"><span style="font-style: normal">The Bacula
         Storage Daemon calls vchanger with 5 positional parameters defined as:</span></p>
-    <table style="margin-left: 2rem;" border="0" cellpadding="0" cellspacing="0"
+    <table style="margin-left: 2rem;" cellspacing="0" cellpadding="0" border="0"
       width="664">
       <colgroup><col width="132"> <col width="532"> </colgroup>
       <tbody>
@@ -686,7 +694,7 @@ Device {
       vchanger virtual magazines have a variable and unlimited number of virtual
       slots.</p>
     <p>Virtual magazines are filesystems or directories that are assigned to an
-      autochanger by including <em style="font-weight: bold;">Magazine</em><span
+      autochanger by including <em style="font-weight: bold;">Magazine</em><span
         style="font-weight: bold;"> </span>directive lines in the vchanger
       configuration file. The order in which the <span style="font-weight: bold; font-style: italic;">Magazine
         </span>directive lines appear in the configuration file&nbsp; determines
@@ -708,12 +716,21 @@ Device {
       cartridges as its virtual magazines. The default volume naming scheme used
       by the CREATEVOLS command will name the first volume file created on the
       first <span style="font-style: italic; font-weight: bold;">Magazine </span>as
-      "changer1_0_0", the 23rd volume created on the second <span style="font-style: italic; font-weight: bold;">Magazine
-        </span>as "changer1_1_22", and so on. When Bacula later requests a
+      "changer1_0000_0000", the 23rd volume created on the second <span style="font-style: italic; font-weight: bold;">Magazine
+        </span>as "changer1_0001_0022", and so on. When Bacula later requests a
       volume that is on a RDX cartridge that is not currently mounted, this
       volume file naming scheme will make it very easy to determine which RDX
       cartridge needs to be attached in order to make the requested volume
       available.</p>
+    <p>The default volume naming scheme used by the CREATEVOLS command is not
+      required. The CREATEVOLS command accepts a pattern string that may be used
+      to name the volume files it creates. In fact, the CREATEVOLS command is
+      simply a convenience. A volume file may be created by creating an empty
+      file on the magazine using touch, etc., and then issuing a <b><i>label
+          barcodes</i></b> command in bconsole. Volume files may have any
+      arbitrary name. Existing volume files may be moved from one magazine to
+      another, requiring only an <b><i>update slots</i></b> command in bconsole
+      to inform Bacula of the change in slot assignments.</p>
     <p>On most systems, filesystems to be used as magazines may be specified by
       filesystem UUID, rather than mountpoint directory. This is useful on
       systems where udev, Gnome Nautilus, other dbus-enabled automounters, and
@@ -747,15 +764,16 @@ Device {
         barcodes</span> command acquires this information from the tape
       autochanger and writes a Bacula volume label to each unlabeled tape,
       naming it according to the tape's barcode. Vchanger emulates a barcode
-      reader by using the volume file's filename as the barcode for that volume.</p>
+      reader by using the volume file's filename as the barcode for that volume.
+    </p>
     <p>While it is recommended to use the default volume naming scheme
       implemented by the CREATEVOLS command, it is not required and volume files
       can have any filename. Just keep in mind that vchanger uses the volume
       file's filename as its barcode label. This means that the filename must
       match the volume label that was written to the file when the volume was
       labeled. Volumes cannot be renamed by simply renaming the file to a
-      different filename. They would also have to have a new Bacula volume label
-      written to them.</p>
+      different filename. if renamed, they would also have to have a new Bacula
+      volume label written to them.</p>
     <h2><a name="virtual_slots"></a>4.3. Virtual Slots</h2>
     <p>Each time vchanger is invoked it maps the volume files on all attached
       magazines to a virtual slot number. State information kept in the
@@ -894,8 +912,8 @@ Device {
     <h2><a name="win32_build"></a>5.3.1. Installing the Windows Version from
       Source</h2>
     <p>The Windows version was developed under <a href="http://www.centos.org/">Centos</a>
-      7.0 using the <a href="http://mingw-w64.sourceforge.net/">MinGW-w64</a>
-      (gcc-4.9.1) cross-compiler system. On a Linux system with MinGW-w64
+      7.5 using the <a href="http://mingw-w64.sourceforge.net/">MinGW-w64</a>
+      (gcc-4.9.3) cross-compiler system. On a Linux system with MinGW-w64
       development tools installed, the Windows version can be built as follows:</p>
     <p>Unpack the gzip compressed tar archive in your home directory.</p>
     <pre>[]$ cd ~
@@ -1003,15 +1021,26 @@ UUID=a4902c05-e47d-40e0-9db7-b3d03d08c266 /mnt/vchanger/mag1 ext4 defaults,noaut
     <p>After use, the removable drive can then be removed using:</p>
     <pre style="margin-left: 2.5em;">[]# umount /mnt/vchanger/mag0<br>[]# vchanger /etc/vchanger/vchanger.conf refresh</pre>
     <p>It is also possible, when manually mounting magazine partitions, to use
-      the mountpoint path in the <span style="font-style: italic; font-weight: bold;">Magazine
-        </span>directive, rather than the UUID. When a magazine is specified by
+      a mountpoint path in the <span style="font-style: italic; font-weight: bold;">Magazine
+        </span>directive, rather than a UUID. When a magazine is specified by
       path (rather than by UUID), vchanger assumes the magazine is mounted if
       that path exists. However, if that directory path exists while the
       magazine's partition is not mounted, then that directory will be part of
       the underlying filesystem rather than the unmounted magazine partition's
       filesystem. For this reason, specifying directory paths in Magazine
-      directives is only recommended for permanently mounted filesystems.
-      Filesystems that are not permanently mounted should be specified by UUID.
+      directives is only recommended for permanently mounted filesystems. For
+      filesystems that are not permanently mounted, specifying magazines by UUID
+      is more flexible, allowing for multiple simultaneously mounted disks and
+      udev mount/unmount scripts that automate the bconsole calls needed to keep
+      Bacula in sync. </p>
+    <p>When specifying a magazine by directory path, rather than filesystem
+      UUID, vchanger will use any files in that directory as volume files. For
+      example, one could specify a single magazine= line in the vchanger
+      configuration file, then mount removable disks there one at a time. At
+      each invocation, vchanger will assign whatever files exist in that
+      directory to its virtual slots. However, this would in turn require
+      manually running 'update slots' in bconsole and would prevent mounting
+      more than one disk at a time, so will require more operator intervention.
     </p>
     <h2><a name="udev_mounting"></a>7.3. Using udev To Mount Removable Drive
       Partitions</h2>
@@ -1108,11 +1137,11 @@ UUID=a4902c05-e47d-40e0-9db7-b3d03d08c266 /mnt/vchanger/mag1 ext4 defaults,noaut
       config files, when you plug in a USB drive with filesystem UUID of, say,
       9667f83c-6150-44c7-b0d4-57564f174b35, you should be able to list its
       contents with the command</p>
-    <pre style="margin-top: 0.01in; margin-bottom: 0.2in">[]# ls /mnt/vchanger/<span
+    <pre style="margin-top: 0.01in; margin-bottom: 0.2in">[]# ls /mnt/vchanger/<span
 style="font-style: normal">9667f83c-6150-44c7-b0d4-57564f174b35</span></pre>
     <p style="font-style: normal">The Magazine directive in the vchanger
       configuration file for the above example partition would be:</p>
-    <pre style="margin-top: 0.01in; margin-bottom: 0.2in; margin-left: 2.5em;">Magazine = /mnt/vchanger/<span
+    <pre style="margin-top: 0.01in; margin-bottom: 0.2in; margin-left: 2.5em;">Magazine = /mnt/vchanger/<span
 style="font-style: normal">9667f83c-6150-44c7-b0d4-57564f174b35</span></pre>
     <h2><a name="mounting_win32"></a>7.5. Mounting Removable Drives On Windows</h2>
     <p>Microsoft Windows operating systems normally automount removable drive
@@ -1138,10 +1167,11 @@ style="font-style: normal">9667f83c-6150-44c7-b0d4-57564f174b35</span></pre>
       at a directory in an NTFS directory tree. It should be noted that only the
       mount point directory must be on an NTFS volume. The partition being
       mounted may have a FAT32 file system or any other file system for which
-      there is a file system driver installed. See “<a href="http://technet.microsoft.com/en-us/library/cc753321.aspx">Assign
-        a mount point folder path to a drive</a>” for instructions on assigning
-      mountpoints for removable drive partitions. Like with drive letters, it is
-      not possible to assign the same mountpoint to more than one drive.</p>
+      there is a file system driver installed. See &ldquo;<a href="http://technet.microsoft.com/en-us/library/cc753321.aspx">Assign
+        a mount point folder path to a drive</a>&rdquo; for instructions on
+      assigning mountpoints for removable drive partitions. Like with drive
+      letters, it is not possible to assign the same mountpoint to more than one
+      drive.</p>
     <p>On Windows, magazine partitions should always be specified by UUID
       (Volume Serial Number). This ensures that vchanger will be able to find
       the partition's mountpoint without prior knowledge of which drive letter
@@ -1161,7 +1191,8 @@ style="font-style: normal">9667f83c-6150-44c7-b0d4-57564f174b35</span></pre>
       appearing inside of the quoted value must be escaped by prepending with a
       '\' character. The following keywords are defined for an autochanger
       configuration file:</p>
-    <table style="margin-left: 2rem; width: 50em;" border="0" cellpadding="0" cellspacing="0">
+    <table style="margin-left: 2rem; width: 50em;" cellspacing="0" cellpadding="0"
+      border="0">
       <colgroup><col width="172"> <col width="492"> </colgroup>
       <tbody>
         <tr valign="top">
@@ -1238,7 +1269,9 @@ style="font-style: normal">9667f83c-6150-44c7-b0d4-57564f174b35</span></pre>
           <td width="492">
             <p>The path to the bconsole binary that vchanger will invoke to
               issue 'update slots' and 'label barcodes' commands to Bacula. To
-              disable interaction with Bacula, set to the empty string.<br>
+              disable interaction with Bacula via bconsole, set to the empty
+              string. When disabled, 'update slots' and 'label barcodes'
+              commands will need to be issued manually from within bconsole.<br>
               Default: /usr/sbin/bconsole</p>
           </td>
         </tr>
@@ -1247,7 +1280,7 @@ style="font-style: normal">9667f83c-6150-44c7-b0d4-57564f174b35</span></pre>
             <p>bconsole config</p>
           </td>
           <td width="492">
-            <p>The path to the configuration file to use when invoking bconsole<span
+            <p>The path to the configuration file to use when invoking bconsole<span
                 style="font-style: normal"></span>.<br>
               Default: /etc/bacula/bconsole.conf</p>
           </td>
@@ -1268,11 +1301,11 @@ style="font-style: normal">9667f83c-6150-44c7-b0d4-57564f174b35</span></pre>
           </td>
           <td width="492">
             <p>[Required] Defines either the path to a directory or the UUID of
-              a filesystem partition (prepended by the string “UUID:”) that is
-              to be used as a magazine containing volume files . The magazine
-              directive assigns a directory or partition to this autochanger.
-              This directive may appear multiple times to assign multiple
-              magazines.<br>
+              a filesystem partition (prepended by the string
+              &ldquo;UUID:&rdquo;) that is to be used as a magazine containing
+              volume files . The magazine directive assigns a directory or
+              partition to this autochanger. This directive may appear multiple
+              times to assign multiple magazines.<br>
               Default: none</p>
           </td>
         </tr>
@@ -1283,7 +1316,7 @@ style="font-style: normal">9667f83c-6150-44c7-b0d4-57564f174b35</span></pre>
     <p>After storage for a new magazine has been <a href="#preparing">prepared</a>,
       it must be defined as an autochanger magazine. This is accomplished by
       adding a <span style="font-style: italic; font-weight: bold;">Magazine</span>
-      directive to the vchanger configuration file. For removable storage, the <span
+      directive to the vchanger configuration file. For removable storage, the <span
         style="font-weight: bold; font-style: italic;">Magazine </span>directive
       should&nbsp;specify the filesystem UUID (or the mountpoint path if using
       autofs). If a directory on permanently mounted fixed-disk storage is being
@@ -1319,7 +1352,7 @@ style="font-style: normal">9667f83c-6150-44c7-b0d4-57564f174b35</span></pre>
       file is defined with Magazine directives assigning the empty USB drive
       partitions to an autochanger named vchanger-1.</p>
     <pre># /etc/vchanger/vchanger-1.conf
-Storage Resource = vchanger-1<br>User = bacula<br>Group = tape<br>Magazine = UUID:<span
+Storage Resource = vchanger-1<br>User = bacula<br>Group = tape<br>Magazine = UUID:<span
 style="font-style: normal">9667f83c-6150-44c7-b0d4-57564f174b35</span>
 Magazine = UUID:5039284a<span style="font-style: normal">-4312-57d1-92c4-354710032c79</span>
 #eof</pre>
@@ -1419,8 +1452,8 @@ Device {
       volumes<span style="font-style: italic;"></span>. We can now add some
       volumes with:</p>
     <pre>[]# vchanger /etc/vchanger/vchanger-1.conf createvols 0 2
-creating label 'vchanger-1_0_0'
-creating label 'vchanger-1_0_1'
+creating label 'vchanger-1_0000_0000'
+creating label 'vchanger-1_0000_0001'
 Created 2 volume files on magazine 0
 </pre>
     <p>Now the output from a LISTMAGS<span style="font-weight: bold; font-style: italic;">
@@ -1432,7 +1465,7 @@ Created 2 volume files on magazine 0
       mapped to virtual slots 1-2. We can issue the LIST command to see what
       volumes the vchanger-1 autochanger has in its virtual slots.</p>
     <pre>[]# vchanger /etc/vchanger/vchanger-1.conf list
-1:vchanger-1_0_0<br>2:vchanger-1_0_1</pre>
+1:vchanger-1_0000_0000<br>2:vchanger-1_0000_0001</pre>
     <p>This shows that two volume files are in slots 1 and 2. We can use
       bconsole to see what Bacula thinks the autochanger status is.</p>
     <pre>[]# echo "status slots storage=vchanger-1 drive=0" | bconsole
@@ -1447,24 +1480,24 @@ Connecting to Storage daemon vchanger-1 at 192.168.1.9:9103 ...
 Device "vchanger-1" has 2 slots.
 Connecting to Storage daemon vchanger-1 at 192.168.1.9:9103 ...
 3306 Issuing autochanger "list" command.
- Slot |   Volume Name    |   Status  |     Media Type       |      Pool          |
-------+------------------+-----------+----------------------+--------------------|
-    1 | vchanger-1_0_0   |    Append |                 File |            Scratch |
-    2 | vchanger-1_0_1   |    Append |                 File |            Scratch | </pre>
+ Slot |   Volume Name          |   Status  |     Media Type       |      Pool          |
+------+------------------------+-----------+----------------------+--------------------|
+    1 | vchanger-1_0000_0000   |    Append |                 File |            Scratch |
+    2 | vchanger-1_0000_0001   |    Append |                 File |            Scratch | </pre>
     <p>This shows that the CREATEVOLS<span style="font-style: italic; font-weight: bold;">
       </span>command has created two volume files on the first magazine and has
-      successfully labeled them using the <span style="font-style: italic;">l<span
+      successfully labeled them using the <span style="font-style: italic;">l<span
           style="font-weight: bold;">abel barcodes</span></span> command via
       bconsole.</p>
     <p>Now attach the second USB drive and add some volumes to it using:</p>
     <pre>[]# vchanger /etc/vchanger/vchanger-1.conf createvols 1 3
-creating label 'vchanger-1_1_0'
-creating label 'vchanger-1_1_1'<br>creating label 'vchanger-1_1_2'<br>Created 3 volume files on magazine 1
+creating label 'vchanger-1_0001_0000'
+creating label 'vchanger-1_0001_0001'<br>creating label 'vchanger-1_0001_0002'<br>Created 3 volume files on magazine 1
 </pre>
     <p>and confirm that the volumes were added as expected with:</p>
     <pre>[]# vchanger /etc/vchanger/vchanger-1.conf listmags<br>0:2:1:/mnt/vchanger/9667f83c-6150-44c7-b0d4-57564f174b35
 1:3:3:/mnt/vchanger/5039284a<span style="font-style: normal">-4312-57d1-92c4-354710032c79</span><br><br>[]# vchanger /etc/vchanger/vchanger-1.conf list
-1:vchanger-1_0_0<br>2:vchanger-1_0_1<br>3:vchanger-1_1_0<br>4:vchanger-1_1_1<br>5:vchanger-1_1_2<br><br>[]# echo "status slots storage=vchanger-1 drive=0" | bconsole
+1:vchanger-1_0000_0000<br>2:vchanger-1_0000_0001<br>3:vchanger-1_0001_0000<br>4:vchanger-1_0001_0001<br>5:vchanger-1_0001_0002<br><br>[]# echo "status slots storage=vchanger-1 drive=0" | bconsole
 Connecting to Director 127.0.0.1:9101
 1000 OK: bacula-dir Version: 5.2.13 (19 February 2013)
 Enter a period to cancel a command.
@@ -1476,12 +1509,12 @@ Connecting to Storage daemon vchanger-1 at 192.168.1.9:9103 ...
 Device "vchanger-1" has 2 slots.
 Connecting to Storage daemon vchanger-1 at 192.168.1.9:9103 ...
 3306 Issuing autochanger "list" command.
- Slot |   Volume Name    |   Status  |     Media Type       |      Pool          |
-------+------------------+-----------+----------------------+--------------------|
-    1 | vchanger-1_0_0   |    Append |                 File |            Scratch |<br>    2 | vchanger-1_0_1   |    Append |                 File |            Scratch |
-    3 | vchanger-1_1_0   |    Append |                 File |            Scratch |
-    4 | vchanger-1_1_1   |    Append |                 File |            Scratch |
-    5 | vchanger-1_1_2   |    Append |                 File |            Scratch |
+ Slot |   Volume Name          |   Status  |     Media Type       |      Pool          |
+------+------------------------+-----------+----------------------+--------------------|
+    1 | vchanger-1_0000_0000   |    Append |                 File |            Scratch |<br>    2 | vchanger-1_0000_0001   |    Append |                 File |            Scratch |
+    3 | vchanger-1_0001_0000   |    Append |                 File |            Scratch |
+    4 | vchanger-1_0001_0001   |    Append |                 File |            Scratch |
+    5 | vchanger-1_0001_0002   |    Append |                 File |            Scratch |
 </pre>
     <p>If the first USB drive is now unplugged, the script invoked by udev
       should unmount the first magazine partition and cause an <span style="font-style: italic; font-weight: bold;">update
@@ -1493,9 +1526,9 @@ Connecting to Storage daemon vchanger-1 at 192.168.1.9:9103 ...
 []# vchanger /etc/vchanger/vchanger-1.conf list
 1:
 2:
-3:vchanger-1_1_0
-4:vchanger-1_1_1
-5:vchanger-1_1_2
+3:vchanger-1_0001_0000
+4:vchanger-1_0001_0001
+5:vchanger-1_0001_0002
 
 []# echo "status slots storage=vchanger-1 drive=0" | bconsole
 Connecting to Director 127.0.0.1:9101
@@ -1509,26 +1542,26 @@ Connecting to Storage daemon vchanger-1 at 192.168.1.9:9103 ...
 Device "vchanger-1" has 2 slots.
 Connecting to Storage daemon vchanger-1 at 192.168.1.9:9103 ...
 3306 Issuing autochanger "list" command.
- Slot |   Volume Name    |   Status  |     Media Type       |      Pool          |
-------+------------------+-----------+----------------------+--------------------|<br>    1*|                  |         ? |                    ? |                  ? |<br>    2*|                  |         ? |                    ? |                  ? |<br>&nbsp;   3 | vchanger-1_1_0   |    Append |                 File |            Scratch |
-    4 | vchanger-1_1_1   |    Append |                 File |            Scratch |
-    5 | vchanger-1_1_2   |    Append |                 File |            Scratch |
+ Slot |   Volume Name          |   Status  |     Media Type       |      Pool          |
+------+------------------------+-----------+----------------------+--------------------|<br>    1*|                        |         ? |                    ? |                  ? |<br>    2*|                        |         ? |                    ? |                  ? |<br>&nbsp;   3 | vchanger-1_0001_0000   |    Append |                 File |            Scratch |
+    4 | vchanger-1_0001_0001   |    Append |                 File |            Scratch |
+    5 | vchanger-1_0001_0002   |    Append |                 File |            Scratch |
 </pre>
     <p>Let's now examine what happens when a volume file is "loaded" into a
       virtual drive.</p>
     <pre>[]# vchanger /etc/vchanger/vchanger-1.conf load 3 /dev/null 0
 []# ls -l /var/spool/vchanger/vchanger-1
-lrwxrwxrwx 1 bacula tape 29 Mar  1 16:46 0 -&gt; /mnt/vchanger/5039284a<span style="font-style: normal">-4312-57d1-92c4-354710032c79</span>/vchanger-1_1_0
+lrwxrwxrwx 1 bacula tape 29 Mar  1 16:46 0 -&gt; /mnt/vchanger/5039284a<span style="font-style: normal">-4312-57d1-92c4-354710032c79</span>/vchanger-1_0001_0000
 -rw-r----- 1 bacula tape 21 Mar  1 16:46 bay_state-1
 -rw-r----- 1 bacula tape 30 Mar  1 16:46 drive_state-0
 </pre>
     <p>The LOAD command created a symlink named '0' in the autochanger's work
-      directory that points to the file 'vchanger-1_1_0' in the filesystem
+      directory that points to the file 'vchanger-1_0001_0000' in the filesystem
       mounted at /mnt/vchanger/5039284a-4312-57d1-92c4-354710032c79, the volume
       file that is mapped to virtual slot 3. The symlink named '0' is this
       autochanger's drive 0. Notice that the path to this symlink was defined in
       bacula-sd.conf as the <span style="font-weight: bold; font-style: italic;">Archive
-        Device</span> for this autochanger's drive 0. When Bacula opens th the
+        Device</span> for this autochanger's drive 0. When Bacula opens the
       symlink for reading or writing, it will actually be opening the volume
       file that the symlink points to.&nbsp;</p>
     <p>The LOADED command can be used to check the status of a drive.</p>
@@ -1555,8 +1588,8 @@ lrwxrwxrwx 1 bacula tape 29 Mar  1 16:46 0 -&gt; /mnt/vchanger/5039284a<span sty
       /etc/sysconfig/vchanger.</p>
     <h1><a name="configuring_bacula"></a>11. Configuring Bacula To Use The
       Autochanger</h1>
-    <p>The virtual autochanger must be defined in Bacula by adding <i style="font-weight: bold;">Autochanger</i><span
-        style="font-weight: bold;"> </span>and <i style="font-weight: bold;">Device</i><span
+    <p>The virtual autochanger must be defined in Bacula by adding <i style="font-weight: bold;">Autochanger</i><span
+        style="font-weight: bold;"> </span>and <i style="font-weight: bold;">Device</i><span
         style="font-weight: bold;"> </span>resources to Bacula's configuration
       files. </p>
     <h2><a name="sd_config"></a>11.1. Configuring the Bacula Storage Daemon</h2>
@@ -1628,8 +1661,8 @@ Storage {
     <h1><a name="appendixa"></a>Appendix A. vchanger Commands</h1>
     <h2><a name="command_list"></a>A.1. LIST Command</h2>
     <p style="margin-top: 0in; margin-bottom: 0in; font-style: normal">Bacula
-      issues this command to an autochanger to list to stdout the “barcode
-      labels” of volumes in the autochanger's slots. Many tape autochanger
+      issues this command to an autochanger to list to stdout the &ldquo;barcode
+      labels&rdquo; of volumes in the autochanger's slots. Many tape autochanger
       robots have barcode readers such that tapes can be affixed with an
       adhesive barcode label that identifies the tape. This allows Bacula to
       automate the process of creating volume labels by utilizing the
@@ -1647,12 +1680,12 @@ Storage {
       command is similar to the LIST command except that it also lists current
       drive status in addition to slot status.</p>
     <h2><a name="command_load"></a>A.3. LOAD Command</h2>
-    <p style="font-style: normal">The load command is used to “load” a volume
-      file from a virtual slot into a virtual drive. A tape autochanger does
-      this by physically moving the tape located in the requested library slot
-      into a tape drive. Bacula reads and writes volume data from/to the tape
-      drive's device file. With vchanger, a filesystem symlink at a known path
-      is used as a virtual drive in place of a tape drive's device file. A
+    <p style="font-style: normal">The load command is used to &ldquo;load&rdquo;
+      a volume file from a virtual slot into a virtual drive. A tape autochanger
+      does this by physically moving the tape located in the requested library
+      slot into a tape drive. Bacula reads and writes volume data from/to the
+      tape drive's device file. With vchanger, a filesystem symlink at a known
+      path is used as a virtual drive in place of a tape drive's device file. A
       volume file is then loaded by making the target of that symlink point to
       the volume file mapped to the requested slot. </p>
     <p style="font-style: normal">Parameter 3 gives the autochanger slot number
@@ -1663,8 +1696,8 @@ Storage {
     <p style="font-weight: normal">This command is issued to determine which
       slot, if any, is loaded into a drive. If a drive is loaded, then the
       virtual slot number corresponding to the loaded volume file is written to
-      stdout. If the drive is not loaded, the string “0” is written to stdout to
-      inform Bacula that the drive is not loaded.</p>
+      stdout. If the drive is not loaded, the string &ldquo;0&rdquo; is written
+      to stdout to inform Bacula that the drive is not loaded.</p>
     <h2><a name="command_slots"></a>A.5. SLOTS Command</h2>
     <p style="margin-top: 0in; margin-bottom: 0in; font-style: normal">This
       command simply prints to stdout the maximum number of volume files that
@@ -1688,14 +1721,14 @@ Autochanger
         labeled with a Bacula volume label. The format of this command is</span></p>
     <pre style="margin-top: 0.01in; margin-bottom: 0.2in">vchanger config_file createcols mag_ndx count [start_num] [--label=prefix] [--pool=pool_name]</pre>
     <p style="margin-top: 0.08in">where:</p>
-    <table style="margin-left: 3rem;" border="0" cellpadding="0" cellspacing="0"
+    <table style="margin-left: 3rem;" cellspacing="0" cellpadding="0" border="0"
       width="664">
       <colgroup><col width="131"> <col width="533"> </colgroup>
       <tbody>
       </tbody>
     </table>
-    <table style="margin-left: 1rem; width: 50em; margin-bottom: 1rem;" border="0"
-      cellpadding="0" cellspacing="0">
+    <table style="margin-left: 1rem; width: 50em; margin-bottom: 1rem;" cellspacing="0"
+      cellpadding="0" border="0">
       <tbody>
         <tr>
           <td width="9em">
@@ -1746,8 +1779,10 @@ Autochanger
           </td>
           <td>
             <p>An optional prefix string used in naming the created volume
-              files. The default prefix string is the autochanger's name
-              concatenated with '_' plus the magazine index number.</p>
+              files.&nbsp; The filenames created will be the prefix string
+              concatenated with the integer uniqueness number. The default
+              prefix string is the autochanger's name concatenated with '_',
+              followed by the magazine index number, followed by another '_'.</p>
           </td>
         </tr>
         <tr>
@@ -1775,8 +1810,8 @@ Autochanger
       autochanger's assigned magazines. The format of this command is</p>
     <pre style="margin-top: 0.01in; margin-bottom: 0.2in">vchanger config_file listmags</pre>
     <p style="margin-top: 0.08in">where:</p>
-    <table style="margin-left: 1em; margin-bottom: 1em;" border="0" cellpadding="0"
-      cellspacing="0" width="664">
+    <table style="margin-left: 1em; margin-bottom: 1em;" cellspacing="0" cellpadding="0"
+      border="0" width="664">
       <colgroup><col width="131"> <col width="533"> </colgroup>
       <tbody>
         <tr valign="top">
@@ -1793,8 +1828,8 @@ Autochanger
       to stdout, one line per bay. The format of an output line is:</p>
     <pre style="margin-top: 0.01in; margin-bottom: 0.2in">mag_ndx:count:start_slot:mountpoint</pre>
     <p style="margin-top: 0.08in">where:</p>
-    <table style="margin-left: 1em; margin-bottom: 1em;" border="0" cellpadding="0"
-      cellspacing="0" width="664">
+    <table style="margin-left: 1em; margin-bottom: 1em;" cellspacing="0" cellpadding="0"
+      border="0" width="664">
       <colgroup><col width="131"> <col width="533"> </colgroup>
       <tbody>
         <tr valign="top">
@@ -1836,7 +1871,7 @@ Autochanger
     <h2><a name="command_refresh"></a>A.9. REFRESH Command</h2>
     <p>This is an extended command that is not part of the Bacula Autochanger
       Interface API, and is used to instruct vchanger to scan attached magazines
-      and recalculate the virtual-slot-to-volume-file mapping, sending an <span
+      and recalculate the virtual-slot-to-volume-file mapping, sending an <span
         style="font-weight: bold; font-style: italic;">update slots</span>
       command to Bacula if any changes are detected. In general, this command is
       designed to be invoked from a shell script launched by a udev event or

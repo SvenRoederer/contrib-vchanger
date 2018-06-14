@@ -2,7 +2,7 @@
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2015 Josh Fisher
+ *  vchanger copyright (C) 2008-2018 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the

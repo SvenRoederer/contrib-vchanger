@@ -2,7 +2,7 @@
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2014 Josh Fisher
+ *  vchanger copyright (C) 2008-2017 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -24,6 +24,6 @@
 #ifndef BCONSOLE_H_
 #define BCONSOLE_H_
 
-int issue_bconsole_command(const char *bcmd);
+void IssueBconsoleCommands(bool update_slots, bool label_barcodes);
 
 #endif /* BCONSOLE_H_ */

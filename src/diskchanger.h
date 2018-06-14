@@ -30,13 +30,12 @@
 class DiskChanger
 {
 public:
-   DiskChanger() : changer_lock(NULL), needs_update(false), needs_label(false)  {}
+   DiskChanger() : changer_lock(-1), needs_update(false), needs_label(false)  {}
    virtual ~DiskChanger();
    int Initialize();
    int LoadDrive(int drv, int slot);
    int UnloadDrive(int drv);
    int CreateVolumes(int bay, int count, int start = -1, const char *label_prefix = "");
-   int UpdateBacula();
    const char* GetVolumeLabel(int slot);
    const char* GetVolumePath(tString &fname, int slot);
    bool MagazineEmpty(int bay) const;
@@ -67,7 +66,7 @@ protected:
    int SaveDriveState(int drv);
    int RestoreDriveState(int drv);
 protected:
-   FILE *changer_lock;
+   int changer_lock;
    bool needs_update;
    bool needs_label;
    ErrorHandler verr;

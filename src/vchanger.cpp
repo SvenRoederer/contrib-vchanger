@@ -2,7 +2,7 @@
  *
  *  This file is part of the vchanger package
  *
- *  vchanger copyright (C) 2008-2015 Josh Fisher
+ *  vchanger copyright (C) 2008-2018 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -31,6 +31,9 @@
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
+#ifdef HAVE_ERRNO_H
+#include <errno.h>
+#endif
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
@@ -54,6 +57,8 @@
 #include "compat_defs.h"
 #include "loghandler.h"
 #include "diskchanger.h"
+#include "mymutex.h"
+#include "bconsole.h"
 
 DiskChanger changer;
 
@@ -80,6 +85,7 @@ typedef struct _cmdparams_s
 {
    bool print_version;
    bool print_help;
+   bool force;
    int command;
    int slot;
    int drive;
@@ -115,12 +121,15 @@ static void print_help(void)
       "    changer defined by vchanger configuration file\n"
       "    'config_file' using 'slot', 'device', and 'drive'\n"
       "  vchanger [options] config_file LISTMAGS\n"
-      "    vchanger extension to list info on all defined magazines.\n"
+      "    API extension to list info on all defined magazines.\n"
       "  vchanger [options] config_file CREATEVOLS mag_ndx count [start] [CREATEVOLS options]\n"
-      "    vchanger extension to create 'count' empty volume files on the magazine at\n"
-      "    index 'mag_ndx'. If specified, 'start' is the lowest integer to use when\n"
+      "    API extension to create 'count' empty volume files on the magazine at\n"
+      "    index 'mag_ndx'. If specified, 'start' is the lowest integer to use in\n"
       "    appending integers to the label prefix when generating volume names.\n"
       "  vchanger [options] config_file REFRESH\n"
+      "    API extension to issue an Update Slots command in bconsole if a change\n"
+      "    in the virtual slot to volume file mapping is detected. The --force flag\n"
+      "    forces the bconsole call regardless detected changes.\n"
       "  vchanger --version\n"
       "    print version info\n"
       "  vchanger --help\n"
@@ -131,13 +140,13 @@ static void print_help(void)
       "\nCREATEVOLS command options:\n"
       "    -l, --label=string   string to use as a prefix for determining the\n"
       "                         barcode label of the volume files created. Labels\n"
-      "                         will be of the form 'string'_N, where N is an\n"
-      "                         integer. By default the prefix will be generated\n"
-      "                         using the changer name and the position of the\n"
-      "                         magazine's declaration in the configuration file.\n"
-      "    --pool=string        Overrides the default pool, defined in the vchanger\n"
-      "                         config file, that new volumes should be placed into\n"
-      "                         when labeling newly created volumes.\n"
+      "                         will be of the form 'string'N, where N is a\n"
+      "                         4 digit integer with leading zeros. The magazine\n"
+      "                         name is used as the prefix string by default.\n"
+      "    --pool=string        Overrides the default pool that new volumes should\n"
+      "                         be placed into when labeling newly created volumes.\n"
+      "\nREFRESH command options:\n"
+      "    --force              Force a bconsole update slots command to be invoked\n"
       "\nReport bugs to %s.\n", PACKAGE_BUGREPORT);
 }
 
@@ -147,6 +156,7 @@ static void print_help(void)
 #define LONGONLYOPT_VERSION   0
 #define LONGONLYOPT_HELP      1
 #define LONGONLYOPT_POOL      2
+#define LONGONLYOPT_FORCE     3
 
 static int parse_cmdline(int argc, char *argv[])
 {
@@ -158,10 +168,12 @@ static int parse_cmdline(int argc, char *argv[])
          { "group", 1, 0, 'g' },
          { "label", 1, 0, 'l' },
          { "pool", 1, 0, LONGONLYOPT_POOL },
+         { "force", 0, 0, LONGONLYOPT_FORCE },
          { 0, 0, 0, 0 } };
 
    cmdl.print_version = false;
    cmdl.print_help = false;
+   cmdl.force = false;
    cmdl.command = 0;
    cmdl.slot = 0;
    cmdl.drive = 0;
@@ -197,6 +209,9 @@ static int parse_cmdline(int argc, char *argv[])
          break;
       case LONGONLYOPT_POOL:
          cmdl.pool = optarg;
+         break;
+      case LONGONLYOPT_FORCE:
+         cmdl.force = true;
          break;
       default:
          fprintf(stderr, "unknown option %s\n", optarg);
@@ -235,6 +250,11 @@ static int parse_cmdline(int argc, char *argv[])
    /* Make sure only CREATEVOLS command has --pool flag */
    if (!cmdl.pool.empty() && cmdl.command != CMD_CREATEVOLS) {
       fprintf(stderr, "flag --pool not valid for this command\n");
+      return -1;
+   }
+   /* Make sure only REFRESH command has --force flag */
+   if (cmdl.force && cmdl.command != CMD_REFRESH) {
+      fprintf(stderr, "flag --force not valid for this command\n");
       return -1;
    }
    /* Check param 3 exists */
@@ -526,7 +546,7 @@ static int do_create_vols()
 
 int main(int argc, char *argv[])
 {
-   int rc;
+   int rc, mut;
    FILE *fs = NULL;
    int32_t error_code;
 
@@ -583,7 +603,7 @@ int main(int argc, char *argv[])
    /* Ignore SIGPIPE signals */
    signal(SIGPIPE, SIG_IGN);
 #endif
-   /* Initialize changer. A lock file is created to serialize access
+   /* Initialize changer. A named mutex is created to serialize access
     * to the changer. As a result, changer initialization may block
     * for up to 30 seconds, and may fail if a timeout is reached */
    if (changer.Initialize()) {
@@ -594,47 +614,48 @@ int main(int argc, char *argv[])
    /* Perform command */
    switch (cmdl.command) {
    case CMD_LIST:
-      log.Debug("==== preforming LIST command pid=%d", getpid());
+      log.Debug("==== preforming LIST command");
       error_code = do_list_cmd();
       break;
    case CMD_SLOTS:
-      log.Debug("==== preforming SLOTS command pid=%d", getpid());
+      log.Debug("==== preforming SLOTS command");
       error_code = do_slots_cmd();
       break;
    case CMD_LOAD:
-      log.Debug("==== preforming LOAD command pid=%d", getpid());
+      log.Debug("==== preforming LOAD command");
       error_code = do_load_cmd();
       break;
    case CMD_UNLOAD:
-      log.Debug("==== preforming UNLOAD command pid=%d", getpid());
+      log.Debug("==== preforming UNLOAD command");
       error_code = do_unload_cmd();
       break;
    case CMD_LOADED:
-      log.Debug("==== preforming LOADED command pid=%d", getpid());
+      log.Debug("==== preforming LOADED command");
       error_code = do_loaded_cmd();
       break;
    case CMD_LISTALL:
-      log.Debug("==== preforming LISTALL command pid=%d", getpid());
+      log.Debug("==== preforming LISTALL command");
       error_code = do_list_all();
       break;
    case CMD_LISTMAGS:
-      log.Debug("==== preforming LISTMAGS command pid=%d", getpid());
+      log.Debug("==== preforming LISTMAGS command");
       error_code = do_list_magazines();
       break;
    case CMD_CREATEVOLS:
-      log.Debug("==== preforming CREATEVOLS command pid=%d", getpid());
+      log.Debug("==== preforming CREATEVOLS command");
       error_code = do_create_vols();
       break;
    case CMD_REFRESH:
-      log.Debug("==== preforming REFRESH command pid=%d", getpid());
+      log.Debug("==== preforming REFRESH command");
       error_code = 0;
-      log.Info("  SUCCESS pid=%d", getpid());
       break;
    }
-   changer.Unlock();
 
    /* If there was an error, then exit */
-   if (error_code) return error_code;
+   if (error_code) {
+      changer.Unlock();
+      return error_code;
+   }
 
    /* If not updating Bacula, then exit */
    if (conf.bconsole.empty()) {
@@ -643,12 +664,37 @@ int main(int argc, char *argv[])
          log.Error("WARNING! 'update slots' needed in bconsole pid=%d", getpid());
       if (changer.NeedsLabel())
          log.Error("WARNING! 'label barcodes' needed in bconsole pid=%d", getpid());
+      changer.Unlock();
       return 0;
    }
 
    /* Update Bacula via bconsole */
 #ifndef HAVE_WINDOWS_H
-   changer.UpdateBacula();
+
+   /* Create named mutex to prevent further bconsole commands when bconsole
+    * commands have already been initiated */
+   mut = mymutex_create("vchanger-bconsole", 0);
+   if (mut < 0) {
+      /* When vchanger is invoked by Bacula because a previous instance of vchanger
+       * issued a bconsole call, ignore updates for this instance */
+      if (errno != EBUSY) {
+         /* Log if any error except EBUSY */
+         log.Error("errno=%d locking bconsole mutex", errno);
+         changer.Unlock();
+         return -1;
+      }
+      log.Debug("bconsole mutex already locked - skipping bconsole call");
+      changer.Unlock();
+      return 0;
+   }
+   /* Unlock the disk changer mutex long enough to issue bconsole commands */
+   changer.Unlock();
+   IssueBconsoleCommands(changer.NeedsUpdate() | cmdl.force, changer.NeedsLabel());
+   changer.Lock(60);
+
+   /* Destroy the bconsole mutex */
+   mymutex_destroy("vchanger-bconsole", mut);
+
 #else
    /* Auto-update of bacula not working for Windows */
    if (changer.NeedsUpdate())
@@ -657,5 +703,6 @@ int main(int argc, char *argv[])
       log.Error("WARNING! 'label barcodes' needed in bconsole");
 #endif
 
+   changer.Unlock();
    return 0;
 }

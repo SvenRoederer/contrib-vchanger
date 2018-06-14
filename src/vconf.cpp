@@ -2,7 +2,7 @@
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2014 Josh Fisher
+ *  vchanger copyright (C) 2008-2018 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -45,26 +45,21 @@
 #include <sys/stat.h>
 #endif
 #ifdef HAVE_WINDOWS_H
-#include "targetver.h"
 #include <windows.h>
+#endif
+#ifdef HAVE_SHLOBJ_H
 #include <shlobj.h>
+#endif
+#ifdef HAVE_DIRECT_H
 #include <direct.h>
-#define DIR_DELIM "\\"
-#define DIR_DELIM_C '\\'
-#define MAG_VOLUME_MASK 0
-#else
-#define DIR_DELIM "/"
-#define DIR_DELIM_C '/'
-#define MAG_VOLUME_MASK S_IWGRP|S_IRWXO
 #endif
 
+#include "compat_defs.h"
 #include "loghandler.h"
 #include "util.h"
 #define __VCONF_SOURCE 1
 #include "vconf.h"
 
-/* Global configuration object */
-VchangerConfig conf;
 
 /*-------------------------------------------
  * Config file keywords and defaults

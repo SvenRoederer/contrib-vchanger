@@ -2,7 +2,7 @@
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2015 Josh Fisher
+ *  vchanger copyright (C) 2008-2018 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -61,10 +61,12 @@
 #include "compat/readlink.h"
 #include "compat/sleep.h"
 #include "compat/symlink.h"
+#include "mymutex.h"
 #include "util.h"
 #include "loghandler.h"
 #include "bconsole.h"
 #include "diskchanger.h"
+#include "vconf.h"
 
 
 /*=================================================
@@ -148,6 +150,7 @@ void DiskChanger::InitializeVirtSlots()
 
    /* Create all known slots as initially empty */
    vslot.clear();
+   vs.clear();
    for (s = 0; s <= dconf.max_slot; s++) {
       vs.vs = s;
       vslot.push_back(vs);
@@ -194,7 +197,7 @@ void DiskChanger::InitializeVirtSlots()
       /* Magazine is mounted, was previously mounted, and has the same volume count,
        * so attempt to assign to the same slots previously assigned */
       found = false;
-      for (v = magazine[m].prev_start_slot; v < (int)vslot.size(); v++) {
+      for (v = magazine[m].prev_start_slot; v < magazine[m].prev_start_slot + magazine[m].prev_num_slots; v++) {
          if (!vslot[v].empty()) {
             found = true;
             break;
@@ -591,7 +594,7 @@ int DiskChanger::LoadDrive(int drv, int slot)
 {
    int rc, m, ms;
 
-   if (!changer_lock) {
+   if (changer_lock < 0) {
       verr.SetError(EINVAL, "changer not initialized");
       log.Error("ERROR! %s", verr.GetErrorMsg());
       return EINVAL;
@@ -612,6 +615,11 @@ int DiskChanger::LoadDrive(int drv, int slot)
       verr.SetError(EBUSY, "drive %d already loaded from slot %d", drv, slot);
       log.Error("ERROR! %s", verr.GetErrorMsg());
       return EBUSY;
+   }
+   if (vslot[slot].drv >= 0) {
+      verr.SetError(EINVAL, "requested slot %d already loaded in drive %d", slot, drv);
+      log.Error("ERROR! %s", verr.GetErrorMsg());
+      return ENOENT;
    }
    if (vslot[slot].empty()) {
       verr.SetError(EINVAL, "cannot load drive %d from empty slot %d", drv, slot);
@@ -652,7 +660,7 @@ int DiskChanger::UnloadDrive(int drv)
 {
    int rc;
 
-   if (!changer_lock) {
+   if (changer_lock < 0) {
       verr.SetError(EINVAL, "changer not initialized");
       log.Error("ERROR! %s", verr.GetErrorMsg());
       return EINVAL;
@@ -699,7 +707,7 @@ int DiskChanger::CreateVolumes(int bay, int count, int start, const char *label_
    tString label, label_prefix(label_prefix_in);
    int i;
 
-   if (!changer_lock) {
+   if (changer_lock < 0) {
       verr.SetError(EINVAL, "changer not initialized");
       log.Error("ERROR! %s", verr.GetErrorMsg());
       return -1;
@@ -713,22 +721,22 @@ int DiskChanger::CreateVolumes(int bay, int count, int start, const char *label_
    tStrip(tRemoveEOL(label_prefix));
    if (label_prefix.empty()) {
       /* Default prefix is storage-name_magazine-number */
-      tFormat(label_prefix, "%s_%d", conf.storage_name.c_str(), bay);
+      tFormat(label_prefix, "%s_%04d_", conf.storage_name.c_str(), bay);
    }
    if (start < 0) {
       /* Find highest uniqueness number for this filename prefix */
       for (i = magazine[bay].num_slots * 5; i > 0; i--) {
-         tFormat(label, "%s_%d", label_prefix.c_str(), i);
+         tFormat(label, "%s%04d", label_prefix.c_str(), i);
          if (magazine[bay].GetVolumeSlot(label) >= 0) break;
       }
       start = i;
    }
    for (i = 0; i < count; i++) {
-      tFormat(label, "%s_%d", label_prefix.c_str(), start);
+      tFormat(label, "%s%04d", label_prefix.c_str(), start);
       if (!magazine[bay].empty()) {
          while (magazine[bay].GetVolumeSlot(label) >= 0) {
             ++start;
-            tFormat(label, "%s_%d", label_prefix.c_str(), start);
+            tFormat(label, "%s%04d", label_prefix.c_str(), start);
          }
       }
       fprintf(stdout, "creating label '%s'\n", label.c_str());
@@ -744,60 +752,6 @@ int DiskChanger::CreateVolumes(int bay, int count, int start, const char *label_
    needs_update = true;
    needs_label = true;
    log.Notice("update slots needed. %d volumes added to magazine %d",count , bay);
-   return 0;
-}
-
-/*-------------------------------------------------
- *  Method to cause Bacula to update its catalog to reflect
- *  changes in the available volumes
- *-------------------------------------------------*/
-int DiskChanger::UpdateBacula()
-{
-   int rc;
-   FILE *update_lock;
-   tString cmd;
-   char lockfile[4096];
-
-   /* Check if update needed */
-   if (!needs_update && !needs_label) return 0; /* Nothing to do */
-   /* Create update lock lockfile */
-   snprintf(lockfile, sizeof(lockfile), "%s%s%s.updatelock", conf.work_dir.c_str(), DIR_DELIM,
-         conf.storage_name.c_str());
-   rc = exclusive_fopen(lockfile, &update_lock);
-   if (rc == EEXIST) {
-      /* Update already in progress in another process, so skip */
-      return 0;
-   }
-   if (rc) {
-      /* error creating lockfile, so skip */
-      log.Error("bconsole: errno=%d creating update lockfile", rc);
-      if (needs_update)
-         log.Error("WARNING! 'update slots' needed in bconsole");
-      if (needs_label)
-         log.Error("WARNING! 'label barcodes' needed in bconsole");
-      return 0;
-   }
-   log.Debug("created update lockfile for pid %d", getpid());
-   /* Perform update slots command in bconsole */
-   if (needs_update) {
-      /* Issue update slots command in bconsole */
-      tFormat(cmd, "update slots storage=\"%s\"", conf.storage_name.c_str());
-      if(issue_bconsole_command(cmd.c_str())) {
-         log.Error("WARNING! 'update slots' needed in bconsole");
-      }
-   }
-   /* Perform label barcodes command in bconsole */
-   if (needs_label) {
-      tFormat(cmd, "label storage=\"%s\" pool=\"%s\" barcodes\nyes\nyes\n", conf.storage_name.c_str(),
-            conf.def_pool.c_str());
-      if (issue_bconsole_command(cmd.c_str())) {
-         log.Error("WARNING! 'label barcodes' needed in bconsole");
-      }
-   }
-   /* Obtain changer lock before removing update lock */
-   fclose(update_lock);
-   unlink(lockfile);
-   log.Debug("removed update lockfile for pid %d", getpid());
    return 0;
 }
 
@@ -834,58 +788,37 @@ const char* DiskChanger::GetVolumePath(tString &path, int slot)
 
 
 /*-------------------------------------------------
- *  Protected method to lock changer device using a lock file such that
+ *  Protected method to lock changer device using a named mutex such that
  *  only one process at a time may execute changer commands on the
  *  same autochanger. If another process has the lock, then this process
  *  will sleep 1 second before trying again. This try/wait loop will continue
  *  until the lock is obtained or 'timeout' seconds have expired. If
- *  timeout = 0 then only tries to obtain lock once. If timeout < 0
+ *  timeout = 0 then it only tries to obtain lock once. If timeout < 0
  *  then doesn't return until the lock is obtained.
- *  On success, returns true. Otherwise on error or timeout, sets
- *  lasterr negative and returns false.
+ *  On success, zero. Otherwise on error or timeout, sets
+ *  verr and returns negative.
  *------------------------------------------------*/
 int DiskChanger::Lock(long timeout_seconds)
 {
    int rc;
-   time_t timeout = 0;
-   char lockfile[4096];
 
-   if (changer_lock) return 0;
+   if (changer_lock >= 0) return 0; /* Already locked */
 
    if (timeout_seconds < 0) {
+      /* Timeout in 1 year (ie. infinity) */
       timeout_seconds = 3600 * 24 * 365;
    }
-   if (timeout_seconds > 0) {
-      timeout = time(NULL) + timeout_seconds;
-   }
-   snprintf(lockfile, sizeof(lockfile), "%s%s%s.lock", conf.work_dir.c_str(), DIR_DELIM,
-         conf.storage_name.c_str());
-   rc = exclusive_fopen(lockfile, &changer_lock);
-   if (rc == EEXIST && timeout == 0) {
+
+   rc = mymutex_create(conf.storage_name.c_str(), timeout_seconds);
+   if (rc < 0) {
       /* timeout=0 means do not wait */
-      verr.SetErrorWithErrno(rc, "cannot open lockfile");
+      if (errno == EBUSY) verr.SetError(EBUSY, "timeout waiting to lock named mutex");
+      else verr.SetErrorWithErrno(errno, "cannot lock named mutex");
       log.Error("ERROR! %s", verr.GetErrorMsg());
       return -1;
    }
-   while (rc == EEXIST) {
-      /* sleep before trying again */
-      sleep(1);
-      if (time(NULL) > timeout) {
-         verr.SetError(EBUSY, "timeout waiting for lockfile");
-         log.Error("ERROR! %s", verr.GetErrorMsg());
-         return EACCES;
-      }
-      rc = exclusive_fopen(lockfile, &changer_lock);
-   }
-   if (rc) {
-      verr.SetErrorWithErrno(rc, "cannot open lockfile");
-      log.Error("ERROR! %s", verr.GetErrorMsg());
-      return -1;
-   }
-   /* Write PID to lockfile and leave open for exclusive R/W */
-   fprintf(changer_lock, "%d", getpid());
-   fflush(changer_lock);
-   log.Debug("created lockfile for pid %d", getpid());
+   changer_lock = rc;
+   log.Debug("locked named mutex");
    return 0;
 }
 
@@ -894,14 +827,14 @@ int DiskChanger::Lock(long timeout_seconds)
  *------------------------------------------------*/
 void DiskChanger::Unlock()
 {
-   char lockfile[4096];
-   if (!changer_lock) return;
-   fclose(changer_lock);
-   changer_lock = NULL;
-   snprintf(lockfile, sizeof(lockfile), "%s%s%s.lock", conf.work_dir.c_str(), DIR_DELIM,
-         conf.storage_name.c_str());
-   log.Debug("removing lockfile for pid %d", getpid());
-   unlink(lockfile);
+   if (changer_lock < 0) return;  /* Not currently locked */
+   if (mymutex_destroy(conf.storage_name.c_str(), changer_lock)) {
+      verr.SetErrorWithErrno(errno, "failed to unlock named mutex");
+      log.Error("ERROR! %s", verr.GetErrorMsg());
+   } else {
+      log.Debug("unlocked named mutex");
+   }
+   changer_lock = -1;
 }
 
 

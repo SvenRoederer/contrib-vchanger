@@ -1,6 +1,6 @@
 /* loghandler.cpp
  *
- *  Copyright (C) 2013-2014 Josh Fisher
+ *  Copyright (C) 2013-2018 Josh Fisher
  *
  *  This program is free software. You may redistribute it and/or modify
  *  it under the terms of the GNU General Public License, as published by
@@ -22,6 +22,9 @@
 #ifdef HAVE_STDIO_H
 #include <stdio.h>
 #endif
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 #ifdef HAVE_TIME_H
 #include <time.h>
 #endif
@@ -34,9 +37,7 @@
 #ifdef HAVE_STDARG_H
 #include <stdarg.h>
 #endif
-#ifndef HAVE_LOCALTIME_R
 #include "compat/localtime_r.h"
-#endif
 #define LOGHANDLER_SOURCE 1
 #include "loghandler.h"
 
@@ -179,7 +180,7 @@ void LogHandler::WriteLog(int priority, const char *fmt, va_list vl)
    size_t n;
    struct tm bt;
    time_t t;
-   char buf[1024];
+   char ftim[128], buf[4096];
    Lock();
    if (priority > max_debug_level || priority < LOG_EMERG || !fmt) {
       Unlock();
@@ -187,8 +188,8 @@ void LogHandler::WriteLog(int priority, const char *fmt, va_list vl)
    }
    t = time(NULL);
    localtime_r(&t, &bt);
-   strftime(buf, 100, "%b %d %T: ", &bt);
-   strncpy(buf + strlen(buf), fmt, sizeof(buf) - strlen(buf));
+   strftime(ftim, 100, "%b %d %T: ", &bt);
+   snprintf(buf, sizeof(buf), "%s [%d]: %s", ftim, getpid(), fmt);
    if (use_syslog) vsyslog(priority, buf, vl);
    else {
       n = strlen(buf);
@@ -204,3 +205,17 @@ void LogHandler::WriteLog(int priority, const char *fmt, va_list vl)
    }
    Unlock();
 }
+
+/***************************************************************************************
+ *  C wrapper to write to LogHandler object
+ ***************************************************************************************/
+
+extern "C" void LogHandler_write(int level, const char *fmt, ...)
+{
+   va_list vl;
+   va_start(vl, fmt);
+   log.WriteLog(level, fmt, vl);
+   va_end(vl);
+
+}
+

@@ -3,7 +3,7 @@ VCHANGER(8)
 Josh Fisher <jfisher@jaybus.com>
 :doctype: manpage
 :man source:   vchanger
-:man version:  1.0.1
+:man version:  1.0.2
 :man manual:   vchanger Manual
 
 NAME
@@ -115,14 +115,15 @@ Additionally, the following extended commands are supported.
 
 By default, vcahgner will invoke bconsole and issue commands to Bacula
 when certain operator actions are needed. When anything happens that
-changes the current set of volume files being used, vchanger will
-invoke bconsole and issue an 'update slots' command. For example,
-when the operator attaches a removable drive defined as one of the
-changer's magazines, the volume files on the removable drive must be
-mapped to virtual slots. Since the volume-to-slot mapping will have
-changed, Bacula will need to be informed of the change via the
-'update slots' command. The *REFRESH* command can be invoked to force
-vchanger to update state info and trigger 'update slots' if needed.
+changes the current set of volume files being used, (the virtual slot
+to volume file mapping), vchanger will invoke bconsole and issue an
+'update slots' command. For example, when the operator attaches a
+removable drive defined as one of the changer's magazines, the volume
+files on the removable drive must be mapped to virtual slots. Since
+the slot-to-volume mapping will have changed, Bacula will need to be
+informed of the change via the 'update slots' command. The *REFRESH*
+command can be invoked to force vchanger to update state info and
+trigger 'update slots' if needed.
 
 Additionally, when new volumes are created with the *CREATEVOLS* command,
 vchanger will invoke bconsole and issue a 'label barcodes' command to
@@ -172,7 +173,7 @@ SEE ALSO
 
 COPYRIGHT
 ---------
-Copyright 2006-2015 Josh Fisher
+Copyright 2006-2018 Josh Fisher
 
 This is free software;
 See the source for copying conditions.

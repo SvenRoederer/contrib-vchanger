@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#  vchanger-mount-uuid.sh ( vchanger v.1.0.1 ) 2015-06-03
+#  vchanger-mount-uuid.sh ( vchanger v.1.0.1 ) 2017-12-05
 #
 #  This script is used to mount the filesystem having the
 #  UUID specified in parameter 1 at a fixed path. The path

@@ -3,7 +3,7 @@
 #
 Summary: A virtual autochanger for Bacula
 Name: vchanger
-Version: 1.0.1
+Version: 1.0.2
 Release: 1.el7
 License: GPLv2
 Group: System Environment/Daemons
@@ -35,6 +35,7 @@ make
 rm -rf $RPM_BUILD_ROOT
 mkdir -p ${RPM_BUILD_ROOT}%{_bindir}
 mkdir -p ${RPM_BUILD_ROOT}%{_sysconfdir}/sysconfig
+mkdir -p ${RPM_BUILD_ROOT}%{_sysconfdir}/logrotate.d
 mkdir -p ${RPM_BUILD_ROOT}%{_sysconfdir}/%{name}
 mkdir -p ${RPM_BUILD_ROOT}%{_libexecdir}/%{name}
 mkdir -p ${RPM_BUILD_ROOT}%{_mandir}/man5
@@ -44,6 +45,7 @@ mkdir -m 0770 -p ${RPM_BUILD_ROOT}%{_localstatedir}/spool/%{name}
 mkdir -m 0755 -p ${RPM_BUILD_ROOT}%{_localstatedir}/log/%{name}
 make DESTDIR=${RPM_BUILD_ROOT} install-strip
 install -m 0644 scripts/vchanger.default ${RPM_BUILD_ROOT}%{_sysconfdir}/sysconfig/vchanger
+install -m 0644 contrib/vchanger.logrotate ${RPM_BUILD_ROOT}%{_sysconfdir}/logrotate.d/vchanger
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -52,6 +54,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root,-)
 %{_bindir}/*
 %{_libexecdir}/%{name}/*
+%{_sysconfdir}/logrotate.d/*
 %doc %{_docdir}/%{name}-%{version}/AUTHORS
 %doc %{_docdir}/%{name}-%{version}/ChangeLog
 %doc %{_docdir}/%{name}-%{version}/COPYING
@@ -85,6 +88,8 @@ if [ $1 -eq 1 ] ; then
 fi
 
 %changelog
+* Thu Jun 14 2018 Josh Fisher <jfisher@jaybus.com>
+- Updated to release 1.0.2
 * Wed Jun 3 2015 Josh Fisher <jfisher@jaybus.com>
 - Updated to release 1.0.1
 * Fri Apr 3 2015 Josh Fisher <jfisher@jaybus.com>
