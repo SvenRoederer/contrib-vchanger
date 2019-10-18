@@ -74,7 +74,7 @@ protected:
 };
 
 #ifndef LOGHANDLER_SOURCE
-extern LogHandler log;
+extern LogHandler vlog;
 #endif
 #endif
 

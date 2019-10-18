@@ -398,7 +398,7 @@ static int do_list_cmd()
          fprintf(stdout, "%d:%s\n", slot, changer.GetVolumeLabel(slot));
       }
    }
-   log.Info("  SUCCESS sent list to stdout");
+   vlog.Info("  SUCCESS sent list to stdout");
    return 0;
 }
 
@@ -410,7 +410,7 @@ static int do_list_cmd()
 static int do_slots_cmd()
 {
    fprintf(stdout, "%d\n", changer.NumSlots());
-   log.Info("  SUCCESS reporting %d slots", changer.NumSlots());
+   vlog.Info("  SUCCESS reporting %d slots", changer.NumSlots());
    return 0;
 }
 
@@ -423,10 +423,10 @@ static int do_load_cmd()
 {
    if (changer.LoadDrive(cmdl.drive, cmdl.slot)) {
       fprintf(stderr, "%s\n", changer.GetErrorMsg());
-      log.Error("  ERROR loading slot %d into drive %d", cmdl.slot, cmdl.drive);
+      vlog.Error("  ERROR loading slot %d into drive %d", cmdl.slot, cmdl.drive);
       return 1;
    }
-   log.Info("  SUCCESS loading slot %d into drive %d", cmdl.slot, cmdl.drive);
+   vlog.Info("  SUCCESS loading slot %d into drive %d", cmdl.slot, cmdl.drive);
    return 0;
 }
 
@@ -439,10 +439,10 @@ static int do_unload_cmd()
 {
    if (changer.UnloadDrive(cmdl.drive)) {
       fprintf(stderr, "%s\n", changer.GetErrorMsg());
-      log.Error("  ERROR unloading slot %d from drive %d", cmdl.slot, cmdl.drive);
+      vlog.Error("  ERROR unloading slot %d from drive %d", cmdl.slot, cmdl.drive);
       return 1;
    }
-   log.Info("  SUCCESS unloading slot %d from drive %d", cmdl.slot, cmdl.drive);
+   vlog.Info("  SUCCESS unloading slot %d from drive %d", cmdl.slot, cmdl.drive);
    return 0;
 }
 
@@ -457,7 +457,7 @@ static int do_loaded_cmd()
    int slot = changer.GetDriveSlot(cmdl.drive);
    if (slot < 0) slot = 0;
    fprintf(stdout, "%d\n", slot);
-   log.Info("  SUCCESS reporting drive %d loaded from slot %d", cmdl.drive, slot);
+   vlog.Info("  SUCCESS reporting drive %d loaded from slot %d", cmdl.drive, slot);
    return 0;
 }
 
@@ -491,7 +491,7 @@ static int do_list_all()
             fprintf(stdout, "S:%d:E\n", n);
       }
    }
-   log.Info("  SUCCESS sent listall to stdout");
+   vlog.Info("  SUCCESS sent listall to stdout");
    return 0;
 }
 
@@ -507,7 +507,7 @@ static int do_list_magazines()
 
    if (changer.NumMagazines() == 0) {
       fprintf(stdout, "No magazines are defined\n");
-      log.Info("  SUCCESS no magazines are defined");
+      vlog.Info("  SUCCESS no magazines are defined");
       return 0;
    }
    for (n = 0; n < changer.NumMagazines(); n++) {
@@ -518,7 +518,7 @@ static int do_list_magazines()
                changer.GetMagazineStartSlot(n), changer.GetMagazineMountpoint(n));
       }
    }
-   log.Info("  SUCCESS listing magazine info to stdout");
+   vlog.Info("  SUCCESS listing magazine info to stdout");
    return 0;
 }
 
@@ -531,12 +531,12 @@ static int do_create_vols()
    /* Create new volume files on magazine */
    if (changer.CreateVolumes(cmdl.mag_bay, cmdl.count, cmdl.slot, cmdl.label_prefix.c_str())) {
       fprintf(stderr, "%s\n", changer.GetErrorMsg());
-      log.Error("  ERROR");
+      vlog.Error("  ERROR");
       return -1;
    }
    fprintf(stdout, "Created %d volume files on magazine %d\n",
            cmdl.count, cmdl.mag_bay);
-   log.Info("  SUCCESS");
+   vlog.Info("  SUCCESS");
    return 0;
 }
 
@@ -555,7 +555,7 @@ int main(int argc, char *argv[])
 #endif
 
    /* Log initially to stderr */
-   log.OpenLog(stderr, LOG_ERR);
+   vlog.OpenLog(stderr, LOG_ERR);
    /* parse the command line */
    if ((error_code = parse_cmdline(argc, argv)) != 0) {
       print_help();
@@ -593,7 +593,7 @@ int main(int argc, char *argv[])
          fprintf(stderr, "Error opening opening log file\n");
          return 1;
       }
-      log.OpenLog(fs, conf.log_level);
+      vlog.OpenLog(fs, conf.log_level);
    }
    /* Validate and commit configuration parameters */
    if (!conf.Validate()) {
@@ -614,39 +614,39 @@ int main(int argc, char *argv[])
    /* Perform command */
    switch (cmdl.command) {
    case CMD_LIST:
-      log.Debug("==== preforming LIST command");
+      vlog.Debug("==== preforming LIST command");
       error_code = do_list_cmd();
       break;
    case CMD_SLOTS:
-      log.Debug("==== preforming SLOTS command");
+      vlog.Debug("==== preforming SLOTS command");
       error_code = do_slots_cmd();
       break;
    case CMD_LOAD:
-      log.Debug("==== preforming LOAD command");
+      vlog.Debug("==== preforming LOAD command");
       error_code = do_load_cmd();
       break;
    case CMD_UNLOAD:
-      log.Debug("==== preforming UNLOAD command");
+      vlog.Debug("==== preforming UNLOAD command");
       error_code = do_unload_cmd();
       break;
    case CMD_LOADED:
-      log.Debug("==== preforming LOADED command");
+      vlog.Debug("==== preforming LOADED command");
       error_code = do_loaded_cmd();
       break;
    case CMD_LISTALL:
-      log.Debug("==== preforming LISTALL command");
+      vlog.Debug("==== preforming LISTALL command");
       error_code = do_list_all();
       break;
    case CMD_LISTMAGS:
-      log.Debug("==== preforming LISTMAGS command");
+      vlog.Debug("==== preforming LISTMAGS command");
       error_code = do_list_magazines();
       break;
    case CMD_CREATEVOLS:
-      log.Debug("==== preforming CREATEVOLS command");
+      vlog.Debug("==== preforming CREATEVOLS command");
       error_code = do_create_vols();
       break;
    case CMD_REFRESH:
-      log.Debug("==== preforming REFRESH command");
+      vlog.Debug("==== preforming REFRESH command");
       error_code = 0;
       break;
    }
@@ -661,9 +661,9 @@ int main(int argc, char *argv[])
    if (conf.bconsole.empty()) {
       /* Bacula interaction via bconsole is disabled, so log warnings */
       if (changer.NeedsUpdate())
-         log.Error("WARNING! 'update slots' needed in bconsole pid=%d", getpid());
+         vlog.Error("WARNING! 'update slots' needed in bconsole pid=%d", getpid());
       if (changer.NeedsLabel())
-         log.Error("WARNING! 'label barcodes' needed in bconsole pid=%d", getpid());
+         vlog.Error("WARNING! 'label barcodes' needed in bconsole pid=%d", getpid());
       changer.Unlock();
       return 0;
    }
@@ -679,11 +679,11 @@ int main(int argc, char *argv[])
        * issued a bconsole call, ignore updates for this instance */
       if (errno != EBUSY) {
          /* Log if any error except EBUSY */
-         log.Error("errno=%d locking bconsole mutex", errno);
+         vlog.Error("errno=%d locking bconsole mutex", errno);
          changer.Unlock();
          return -1;
       }
-      log.Debug("bconsole mutex already locked - skipping bconsole call");
+      vlog.Debug("bconsole mutex already locked - skipping bconsole call");
       changer.Unlock();
       return 0;
    }
@@ -698,9 +698,9 @@ int main(int argc, char *argv[])
 #else
    /* Auto-update of bacula not working for Windows */
    if (changer.NeedsUpdate())
-      log.Error("WARNING! 'update slots' needed in bconsole");
+      vlog.Error("WARNING! 'update slots' needed in bconsole");
    if (changer.NeedsLabel())
-      log.Error("WARNING! 'label barcodes' needed in bconsole");
+      vlog.Error("WARNING! 'label barcodes' needed in bconsole");
 #endif
 
    changer.Unlock();

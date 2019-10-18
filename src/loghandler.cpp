@@ -41,7 +41,7 @@
 #define LOGHANDLER_SOURCE 1
 #include "loghandler.h"
 
-LogHandler log;
+LogHandler vlog;
 
 LogHandler::LogHandler() : use_syslog(false), max_debug_level(LOG_WARNING), errfs(stderr)
 {
@@ -214,7 +214,7 @@ extern "C" void LogHandler_write(int level, const char *fmt, ...)
 {
    va_list vl;
    va_start(vl, fmt);
-   log.WriteLog(level, fmt, vl);
+   vlog.WriteLog(level, fmt, vl);
    va_end(vl);
 
 }

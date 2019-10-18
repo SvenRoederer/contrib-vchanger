@@ -79,11 +79,11 @@ static int issue_bconsole_command(const char *bcmd)
    }
    cmd += " -n -u 30";
    /* Start bconsole process */
-   log.Debug("running '%s'", cmd.c_str());
+   vlog.Debug("running '%s'", cmd.c_str());
    pid = mypopen_raw(cmd.c_str(), &fno_in, &fno_out, NULL);
    if (pid < 0) {
       rc = errno;
-      log.Error("bconsole run failed errno=%d", rc);
+      vlog.Error("bconsole run failed errno=%d", rc);
       errno = rc;
       return rc;
    }
@@ -94,7 +94,7 @@ static int issue_bconsole_command(const char *bcmd)
    FD_SET(fno_in, &rfd);
    rc = select(fno_in + 1, NULL, &rfd, NULL, &tv);
    if (rc == 0) {
-      log.Error("timeout waiting to send command to bconsole");
+      vlog.Error("timeout waiting to send command to bconsole");
       close(fno_in);
       close(fno_out);
       errno = ETIMEDOUT;
@@ -102,21 +102,21 @@ static int issue_bconsole_command(const char *bcmd)
    }
    if (rc < 0) {
       rc = errno;
-      log.Error("errno=%d waiting to send command to bconsole", rc);
+      vlog.Error("errno=%d waiting to send command to bconsole", rc);
       close(fno_in);
       close(fno_out);
       errno = rc;
       return rc;
    }
    /* Send command to bconsole's stdin */
-   log.Debug("sending bconsole command '%s'", bcmd);
+   vlog.Debug("sending bconsole command '%s'", bcmd);
    len = strlen(bcmd);
    n = 0;
    while (n < len) {
       rc = write(fno_in, bcmd + n, len - n);
       if (rc < 0) {
          rc = errno;
-         log.Error("send to bconsole's stdin failed errno=%d", rc);
+         vlog.Error("send to bconsole's stdin failed errno=%d", rc);
          close(fno_in);
          close(fno_out);
          errno = rc;
@@ -126,7 +126,7 @@ static int issue_bconsole_command(const char *bcmd)
    }
    if (write(fno_in, "\n", 1) != 1) {
       rc = errno;
-      log.Error("send to bconsole's stdin failed errno=%d", rc);
+      vlog.Error("send to bconsole's stdin failed errno=%d", rc);
       close(fno_in);
       close(fno_out);
       errno = rc;
@@ -137,18 +137,18 @@ static int issue_bconsole_command(const char *bcmd)
    close(fno_in);
    pid = waitpid(pid, &rc, 0);
    if (!WIFEXITED(rc)) {
-      log.Error("abnormal exit of bconsole process");
+      vlog.Error("abnormal exit of bconsole process");
       close(fno_out);
       return EPIPE;
    }
    if (WEXITSTATUS(rc)) {
-      log.Error("bconsole: exited with rc=%d", WEXITSTATUS(rc));
+      vlog.Error("bconsole: exited with rc=%d", WEXITSTATUS(rc));
       close(fno_out);
       return WEXITSTATUS(rc);
    }
 
    /* Read stdout from bconsole */
-   log.Debug("bconsole: bconsole terminated normally");
+   vlog.Debug("bconsole: bconsole terminated normally");
    memset(buf, 0, sizeof(buf));
    tmp.clear();
    rc = read(fno_out, buf, 4095);
@@ -159,13 +159,13 @@ static int issue_bconsole_command(const char *bcmd)
    }
    if (rc < 0) {
       rc = errno;
-      log.Error("errno=%d reading bconsole stdout", rc);
+      vlog.Error("errno=%d reading bconsole stdout", rc);
       close(fno_out);
       errno = rc;
       return rc;
    }
    close(fno_out);
-   log.Debug("bconsole output:\n%s", tmp.c_str());
+   vlog.Debug("bconsole output:\n%s", tmp.c_str());
 
    return 0;
 }
@@ -186,9 +186,9 @@ void IssueBconsoleCommands(bool update_slots, bool label_barcodes)
    if (update_slots) {
       tFormat(cmd, "update slots storage=\"%s\" drive=\"0\"", conf.storage_name.c_str());
       if(issue_bconsole_command(cmd.c_str())) {
-         log.Error("WARNING! 'update slots' needed in bconsole");
+         vlog.Error("WARNING! 'update slots' needed in bconsole");
       }
-      log.Info("bconsole update slots command success");
+      vlog.Info("bconsole update slots command success");
    }
 
    /* Perform label barcodes command in bconsole */
@@ -196,9 +196,9 @@ void IssueBconsoleCommands(bool update_slots, bool label_barcodes)
       tFormat(cmd, "label storage=\"%s\" pool=\"%s\" barcodes\nyes\nyes\n", conf.storage_name.c_str(),
             conf.def_pool.c_str());
       if (issue_bconsole_command(cmd.c_str())) {
-         log.Error("WARNING! 'label barcodes' needed in bconsole");
+         vlog.Error("WARNING! 'label barcodes' needed in bconsole");
       }
-      log.Info("bconsole label barcodes command success");
+      vlog.Info("bconsole label barcodes command success");
    }
 }
 
