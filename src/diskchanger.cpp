@@ -2,7 +2,7 @@
  *
  *  This file is part of vchanger by Josh Fisher.
  *
- *  vchanger copyright (C) 2008-2018 Josh Fisher
+ *  vchanger copyright (C) 2008-2020 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -61,7 +61,6 @@
 #include "compat/readlink.h"
 #include "compat/sleep.h"
 #include "compat/symlink.h"
-#include "mymutex.h"
 #include "util.h"
 #include "loghandler.h"
 #include "bconsole.h"
@@ -72,14 +71,6 @@
 /*=================================================
  *  Class DiskChanger
  *=================================================*/
-
-/*-------------------------------------------------
- * destructor
- *-------------------------------------------------*/
-DiskChanger::~DiskChanger()
-{
-   Unlock();
-}
 
 
 /*-------------------------------------------------
@@ -158,7 +149,7 @@ void DiskChanger::InitializeVirtSlots()
    /* Re-create virtual slots that existed previously if possible */
    for (m = 0; m < (int)magazine.size(); m++) {
       /* Create slots if needed to match max slot used by previous magazines */
-      last = magazine[m].prev_start_slot + magazine[m].prev_num_slots;
+      last = magazine[m].prev_start_slot + magazine[m].prev_num_slots - 1;
       if (last >= (int)vslot.size()) {
          vs.clear();
          while ((int)vslot.size() <= last) {
@@ -565,7 +556,6 @@ int DiskChanger::RestoreDriveState(int drv)
 int DiskChanger::Initialize()
 {
    /* Make sure we have a lock on this changer */
-   if (Lock()) return verr.GetError();
    magazine.clear();
    vslot.clear();
    drive.clear();
@@ -594,11 +584,6 @@ int DiskChanger::LoadDrive(int drv, int slot)
 {
    int rc, m, ms;
 
-   if (changer_lock < 0) {
-      verr.SetError(EINVAL, "changer not initialized");
-      vlog.Error("ERROR! %s", verr.GetErrorMsg());
-      return EINVAL;
-   }
    if (drv < 0) {
       verr.SetError(EINVAL, "invalid drive number %d", drv);
       vlog.Error("ERROR! %s", verr.GetErrorMsg());
@@ -660,11 +645,6 @@ int DiskChanger::UnloadDrive(int drv)
 {
    int rc;
 
-   if (changer_lock < 0) {
-      verr.SetError(EINVAL, "changer not initialized");
-      vlog.Error("ERROR! %s", verr.GetErrorMsg());
-      return EINVAL;
-   }
    if (drv < 0) {
       verr.SetError(EINVAL, "invalid drive number %d", drv);
       vlog.Error("ERROR! %s", verr.GetErrorMsg());
@@ -707,11 +687,6 @@ int DiskChanger::CreateVolumes(int bay, int count, int start, const char *label_
    tString label, label_prefix(label_prefix_in);
    int i;
 
-   if (changer_lock < 0) {
-      verr.SetError(EINVAL, "changer not initialized");
-      vlog.Error("ERROR! %s", verr.GetErrorMsg());
-      return -1;
-   }
    if (bay < 0 || bay >= (int)magazine.size()) {
       verr.SetError(EINVAL, "invalid magazine");
       vlog.Error("ERROR! %s", verr.GetErrorMsg());
@@ -741,6 +716,7 @@ int DiskChanger::CreateVolumes(int bay, int count, int start, const char *label_
       }
       fprintf(stdout, "creating label '%s'\n", label.c_str());
       if (magazine[bay].CreateVolume(label)) {
+         /* On failure, update magazine state if any were created */
          if (i) magazine[bay].save();
          return -1;
       }
@@ -751,7 +727,7 @@ int DiskChanger::CreateVolumes(int bay, int count, int start, const char *label_
    /* New mag state will require 'update slots' and 'label barcodes' in Bacula */
    needs_update = true;
    needs_label = true;
-   vlog.Notice("update slots needed. %d volumes added to magazine %d",count , bay);
+   vlog.Notice("%d volumes added to magazine %d",count , bay);
    return 0;
 }
 
@@ -784,57 +760,6 @@ const char* DiskChanger::GetVolumePath(tString &path, int slot)
    }
    if (vslot[slot].empty()) return path.c_str();
    return magazine[vslot[slot].mag_bay].GetVolumePath(path, vslot[slot].mag_slot);
-}
-
-
-/*-------------------------------------------------
- *  Protected method to lock changer device using a named mutex such that
- *  only one process at a time may execute changer commands on the
- *  same autochanger. If another process has the lock, then this process
- *  will sleep 1 second before trying again. This try/wait loop will continue
- *  until the lock is obtained or 'timeout' seconds have expired. If
- *  timeout = 0 then it only tries to obtain lock once. If timeout < 0
- *  then doesn't return until the lock is obtained.
- *  On success, zero. Otherwise on error or timeout, sets
- *  verr and returns negative.
- *------------------------------------------------*/
-int DiskChanger::Lock(long timeout_seconds)
-{
-   int rc;
-
-   if (changer_lock >= 0) return 0; /* Already locked */
-
-   if (timeout_seconds < 0) {
-      /* Timeout in 1 year (ie. infinity) */
-      timeout_seconds = 3600 * 24 * 365;
-   }
-
-   rc = mymutex_create(conf.storage_name.c_str(), timeout_seconds);
-   if (rc < 0) {
-      /* timeout=0 means do not wait */
-      if (errno == EBUSY) verr.SetError(EBUSY, "timeout waiting to lock named mutex");
-      else verr.SetErrorWithErrno(errno, "cannot lock named mutex");
-      vlog.Error("ERROR! %s", verr.GetErrorMsg());
-      return -1;
-   }
-   changer_lock = rc;
-   vlog.Debug("locked named mutex");
-   return 0;
-}
-
-/*-------------------------------------------------
- *  Protected method to unlock changer device
- *------------------------------------------------*/
-void DiskChanger::Unlock()
-{
-   if (changer_lock < 0) return;  /* Not currently locked */
-   if (mymutex_destroy(conf.storage_name.c_str(), changer_lock)) {
-      verr.SetErrorWithErrno(errno, "failed to unlock named mutex");
-      vlog.Error("ERROR! %s", verr.GetErrorMsg());
-   } else {
-      vlog.Debug("unlocked named mutex");
-   }
-   changer_lock = -1;
 }
 
 

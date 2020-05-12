@@ -1,5 +1,21 @@
- Release Notes for vchanger 1.0.2                  2018-06-14
+ Release Notes for vchanger 1.0.3                  2020-05-07
 
+ Release 1.0.3
+ 
+ This is mostly a bug fix release, correcting the number of slots
+ reported by SIZE/LIST commands, a compilation error on FreeBSD,
+ and failure of the launch scripts invoked by udev on some platforms.
+ 
+ The locking mechanism to allow multiple instances and automatically
+ issuing 'update slots' and other commands to bconsole has been
+ redesigned to use POSIX semaphores.
+ 
+ Bugs Fixed:
+     17 SIZE/​LIST commands return wrong number of slots
+     18 Compilation fails on FreeBSD 13 (head)
+ 
+ ================================================================== 
+ 
  Release 1.0.2
  
  This is a bug fix release, fixing three issues found in version 1.0.1

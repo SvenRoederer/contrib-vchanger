@@ -1,6 +1,6 @@
 /*  mymutex.h
  *
- *  Copyright (C) 2017 Josh Fisher
+ *  Copyright (C) 2017-2020 Josh Fisher
  *
  *  This program is free software. You may redistribute it and/or modify
  *  it under the terms of the GNU General Public License, as published by
@@ -24,7 +24,9 @@
 #include <time.h>
 #endif
 
-int mymutex_create(const char *storage_name, time_t max_wait);
-int mymutex_destroy(const char *storage_name, int fd);
+void* mymutex_create(const char *storage_name);
+int mymutex_lock(void* fd, time_t wait_sec);
+int mymutex_unlock(void* fd);
+int mymutex_destroy(const char *storage_name, void* fd);
 
 #endif /* _MYPOPEN_H_ */

@@ -2,7 +2,7 @@
  *
  *  This file is part of the vchanger package
  *
- *  vchanger copyright (C) 2008-2018 Josh Fisher
+ *  vchanger copyright (C) 2008-2020 Josh Fisher
  *
  *  vchanger is free software.
  *  You may redistribute it and/or modify it under the terms of the
@@ -56,6 +56,7 @@
 #include "util.h"
 #include "compat_defs.h"
 #include "loghandler.h"
+#include "errhandler.h"
 #include "diskchanger.h"
 #include "mymutex.h"
 #include "bconsole.h"
@@ -461,6 +462,7 @@ static int do_loaded_cmd()
    return 0;
 }
 
+
 /*-------------------------------------------------
  *   LISTALL Command
  * Prints state of drives (loaded or empty), followed by state
@@ -522,6 +524,7 @@ static int do_list_magazines()
    return 0;
 }
 
+
 /*-------------------------------------------------
  *   CREATEVOLS (Create Volumes) Command
  * Creates volume files on the specified magazine
@@ -531,7 +534,7 @@ static int do_create_vols()
    /* Create new volume files on magazine */
    if (changer.CreateVolumes(cmdl.mag_bay, cmdl.count, cmdl.slot, cmdl.label_prefix.c_str())) {
       fprintf(stderr, "%s\n", changer.GetErrorMsg());
-      vlog.Error("  ERROR");
+      vlog.Error("  ERROR: %s", changer.GetErrorMsg());
       return -1;
    }
    fprintf(stdout, "Created %d volume files on magazine %d\n",
@@ -546,9 +549,10 @@ static int do_create_vols()
 
 int main(int argc, char *argv[])
 {
-   int rc, mut;
+   int rc;
    FILE *fs = NULL;
    int32_t error_code;
+   void *command_mux = NULL, *bconsole_mux = NULL;
 
 #ifdef HAVE_LOCALE_H
    setlocale(LC_ALL, "");
@@ -571,6 +575,7 @@ int main(int argc, char *argv[])
       print_help();
       return 0;
    }
+
    /* Read vchanger config file */
    if (!conf.Read(cmdl.config_file)) {
       return 1;
@@ -597,17 +602,36 @@ int main(int argc, char *argv[])
    }
    /* Validate and commit configuration parameters */
    if (!conf.Validate()) {
+      fprintf(stderr, "ERROR! configuration file error\n");
       return 1;
    }
 #ifndef HAVE_WINDOWS_H
    /* Ignore SIGPIPE signals */
    signal(SIGPIPE, SIG_IGN);
 #endif
+
+   /* Open/create named mutex */
+   command_mux = mymutex_create("vchanger-command");
+   if (command_mux == 0) {
+      vlog.Error("ERROR! failed to create named mutex errno=%d", errno);
+      fprintf(stderr, "ERROR! failed to create named mutex errno=%d\n", errno);
+      return 1;
+   }
+   /* Lock mutex to perform command */
+   if (mymutex_lock(command_mux, 300)) {
+      vlog.Error("ERROR! failed to lock named mutex errno=%d", errno);
+      fprintf(stderr, "ERROR! failed to lock named mutex errno=%d\n", errno);
+      mymutex_destroy("vchanger-command", command_mux);
+      return 1;
+   }
+
    /* Initialize changer. A named mutex is created to serialize access
     * to the changer. As a result, changer initialization may block
     * for up to 30 seconds, and may fail if a timeout is reached */
    if (changer.Initialize()) {
+      vlog.Error("%s", changer.GetErrorMsg());
       fprintf(stderr, "%s\n", changer.GetErrorMsg());
+      mymutex_destroy("vchanger-command", command_mux);
       return 1;
    }
 
@@ -653,56 +677,58 @@ int main(int argc, char *argv[])
 
    /* If there was an error, then exit */
    if (error_code) {
-      changer.Unlock();
+      mymutex_destroy("vchanger-command", command_mux);
       return error_code;
    }
 
    /* If not updating Bacula, then exit */
+#ifdef HAVE_WINDOWS_H
+   conf.bconsole = "";  /* Issuing bconsole commands not implemented on Windows */
+#endif
    if (conf.bconsole.empty()) {
       /* Bacula interaction via bconsole is disabled, so log warnings */
       if (changer.NeedsUpdate())
          vlog.Error("WARNING! 'update slots' needed in bconsole pid=%d", getpid());
       if (changer.NeedsLabel())
          vlog.Error("WARNING! 'label barcodes' needed in bconsole pid=%d", getpid());
-      changer.Unlock();
+      mymutex_destroy("vchanger-command", command_mux);
       return 0;
    }
 
    /* Update Bacula via bconsole */
-#ifndef HAVE_WINDOWS_H
 
    /* Create named mutex to prevent further bconsole commands when bconsole
     * commands have already been initiated */
-   mut = mymutex_create("vchanger-bconsole", 0);
-   if (mut < 0) {
-      /* When vchanger is invoked by Bacula because a previous instance of vchanger
-       * issued a bconsole call, ignore updates for this instance */
-      if (errno != EBUSY) {
-         /* Log if any error except EBUSY */
-         vlog.Error("errno=%d locking bconsole mutex", errno);
-         changer.Unlock();
-         return -1;
-      }
-      vlog.Debug("bconsole mutex already locked - skipping bconsole call");
-      changer.Unlock();
+   bconsole_mux = mymutex_create("vchanger-bconsole");
+   if (bconsole_mux == 0) {
+      vlog.Error("ERROR! failed to create named mutex errno=%d", errno);
+      fprintf(stderr, "ERROR! failed to create named mutex errno=%d\n", errno);
+      mymutex_destroy("vchanger-command", command_mux);
+      return 1;
+   }
+   /* Lock mutex to perform command */
+   if (mymutex_lock(bconsole_mux, 0)) {
+      /* If bconsole mutex is locked because another instance has previously invoked
+       * bconsole, then this instance is the result of bconsole itself invoking
+       * additional vchanger processes to handle the previous instance's bconsole
+       * command. So tto prevent a race condition, this instance must not invoke
+       * further bconsole processes.  */
+      vlog.Info("invoked from bconsole - skipping further bconsole commands", errno);
+      mymutex_destroy("vchanger-bconsole", bconsole_mux);
+      mymutex_destroy("vchanger-command", command_mux);
       return 0;
    }
-   /* Unlock the disk changer mutex long enough to issue bconsole commands */
-   changer.Unlock();
+
+   /* Unlock the command mutex long enough to issue bconsole commands.
+    * Note that the bconsole mutex is left locked to prevent a race condition
+    * should the invoked bconsole process need to invoke additional
+    * instances of vchanger. */
+   mymutex_unlock(command_mux);
    IssueBconsoleCommands(changer.NeedsUpdate() | cmdl.force, changer.NeedsLabel());
-   changer.Lock(60);
+   mymutex_lock(command_mux, 300);
 
-   /* Destroy the bconsole mutex */
-   mymutex_destroy("vchanger-bconsole", mut);
-
-#else
-   /* Auto-update of bacula not working for Windows */
-   if (changer.NeedsUpdate())
-      vlog.Error("WARNING! 'update slots' needed in bconsole");
-   if (changer.NeedsLabel())
-      vlog.Error("WARNING! 'label barcodes' needed in bconsole");
-#endif
-
-   changer.Unlock();
+   /* Cleanup */
+   mymutex_destroy("vchanger-bconsole", command_mux);
+   mymutex_destroy("vchanger-command", bconsole_mux);
    return 0;
 }

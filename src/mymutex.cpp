@@ -1,6 +1,6 @@
 /* mymutex.cpp
  *
- *  Copyright (C) 2017 Josh Fisher
+ *  Copyright (C) 2017-2020 Josh Fisher
  *
  *  This program is free software. You may redistribute it and/or modify
  *  it under the terms of the GNU General Public License, as published by
@@ -55,107 +55,63 @@
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
-#ifdef HAVE_SYS_MMAN_H
-#include <sys/mman.h>
+#ifdef HAVE_SEMAPHORE_H
+#include <semaphore.h>
 #endif
 
+#include "compat/semaphore.h"
 #include "loghandler.h"
 #include "mypopen.h"
-
-
-
-#ifdef HAVE_WINDOWS_H
-
-union whandle
-{
-   HANDLE hval;
-   int ival;
-};
-typedef union whandle whandle_t;
-
-static HANDLE win32_int_to_handle(int fd)
-{
-   whandle_t h;
-   h.hval = NULL;
-   h.ival = fd;
-   return h.hval;
-}
-
-static int win32_handle_to_int(HANDLE fd)
-{
-   whandle_t h;
-   h.hval = fd;
-   return h.ival;
-}
-
-/*
- *  Function to create a win32 named mutex object.
- *  On success, returns the mutex handle as an int. On error, returns -1 and
- *  sets errno appropriately.
- */
-static int win32_mutex_create(const char *name)
-{
-   HANDLE mut;
-   wchar_t *p16, *path = NULL;
-   size_t path_sz = 0;
-
-    /* Convert path string to UTF16 encoding */
-    if (!AnsiToUTF16(name, &path, &path_sz)) {
-       errno = w32errno(ERROR_BAD_PATHNAME);
-       return -1;
-    }
-   mut = CreateMutexW(NULL, TRUE, path);
-   if (mut == NULL) {
-      errno = w32errno(GetLastError());
-      free(path);
-      return -1;
-   }
-   free(path);
-   return win32_handle_to_int(mut);
-}
-
-#endif
 
 
 /*
  *  Function to create a mutex owned by the caller. Waits up to max_wait seconds
  *  for the mutex to be created. If max_wait is negative, waits indefinitely. If
  *  max_wait is zero, tries once to create mutex and does not block.
- *  On success, returns the descriptor of a new named mutex. On error, returns -1 and
+ *  On success, returns the handle of a named mutex. On error, returns zero and
  *  sets errno appropriately.
  */
-int mymutex_create(const char *storage_name, time_t max_wait)
+void* mymutex_create(const char *storage_name)
 {
-   int mut = -1;
-   time_t timeout = time(NULL) + max_wait;
    char lockname[4096];
 
    if (!storage_name || !storage_name[0]) {
       /* Only create named mutex */
       errno = EINVAL;
-      return -1;
+      return 0;
    }
 #ifdef HAVE_WINDOWS_H
-      snprintf(lockname, sizeof(lockname), "vchanger-%s", storage_name);
+   snprintf(lockname, sizeof(lockname), "vchanger-%s", storage_name);
 #else
-      snprintf(lockname, sizeof(lockname), "/vchanger-%s", storage_name);
+   snprintf(lockname, sizeof(lockname), "/vchanger-%s", storage_name);
 #endif
-      while (mut < 0) {
-#ifdef HAVE_WINDOWS_H
-      mut = win32_mutex_create(lockname);
-#else
-      mut = shm_open(lockname, O_CREAT|O_EXCL, 0777);
-#endif
-      if (mut < 0) {
-         if (errno != EEXIST) return -1;
-         if (time(NULL) > timeout) {
-            errno = EBUSY;
-            return -1;
-         }
-         sleep(1);
-      }
-   }
-   return mut;
+   return (void*)sem_open(lockname, O_CREAT, 0770, 1);
+}
+
+
+/*
+ *  Function to lock an opened mutex given by fd.
+ *  On success, returns zero. On error, returns -1 and
+ *  sets errno appropriately.
+ */
+int mymutex_lock(void *fd, time_t wait_sec)
+{
+   struct timespec ts;
+   if (wait_sec == 0) return sem_trywait((sem_t*)fd);
+   ts.tv_sec = time(NULL) + wait_sec;  /* semaphore.h functions use absolute time */
+   ts.tv_nsec = 0;
+   return sem_timedwait((sem_t*)fd, &ts);
+}
+
+
+/*
+ *  Function to unlock an opened mutex given by fd.
+ *  On success, returns zero. On error, returns -1 and
+ *  sets errno appropriately.
+ */
+int mymutex_unlock(void *fd)
+{
+   return sem_post((sem_t*)fd);
 }
 
 
@@ -164,25 +120,12 @@ int mymutex_create(const char *storage_name, time_t max_wait)
  *  On success, returns zero. On error, returns -1 and
  *  sets errno appropriately.
  */
-int mymutex_destroy(const char *storage_name, int fd)
+void mymutex_destroy(const char *name, void *fd)
 {
-   char lockname[256];
-
-   if (!storage_name || !storage_name[0] || fd < 0) {
-      /* Only destroy named mutex */
-      errno = EINVAL;
-      return -1;
+   if (fd) {
+      sem_post((sem_t*)fd);
+      sem_close((sem_t*)fd);
    }
-#ifdef HAVE_WINDOWS_H
-   if (CloseHandle(win32_int_to_handle(fd)) == FALSE) {
-      errno = w32errno(GetLastError());
-      return -1;
-   }
-#else
-   snprintf(lockname, sizeof(lockname), "/vchanger-%s", storage_name);
-   close(fd);
-   if (shm_unlink(lockname)) return -1;
-#endif
-   return 0;
+   if (name && name[0]) sem_unlink(name);
 }
 

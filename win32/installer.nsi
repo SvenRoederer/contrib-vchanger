@@ -1,5 +1,5 @@
 #................-
-#. Date of creation: 2017-12-08
+#. Date of creation: 2020-05-06
 #. Name: installer.nsi
 #................-
 #..- Package parameters ...
@@ -25,20 +25,20 @@ SetCompressor lzma
 # These three must be integers
 !define VERSIONMAJOR 1
 !define VERSIONMINOR 0
-!define VERSIONBUILD 2
+!define VERSIONBUILD 3
 # These will be displayed by the "Click here for support information" link in "Add/Remove Programs"
 !define HELPURL "http://sourceforge.net/projects/vchanger/" # "Support Information" link
-Name "vchanger 1.0.2"
-VIProductVersion "1.0.2.0"
+Name "vchanger 1.0.3"
+VIProductVersion "1.0.3.0"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "ProductName" "vchanger Installer"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "Copyright (c) Josh Fisher 2008-2017"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "LegalCopyright" "Copyright (c) Josh Fisher 2008-2020"
 VIAddVersionKey /LANG=${LANG_ENGLISH} "FileDescription" "vchanger Windows Installer"
-VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" "1.0.2"
+VIAddVersionKey /LANG=${LANG_ENGLISH} "FileVersion" "1.0.3"
 ShowInstDetails nevershow
 SilentInstall normal
 RequestExecutionLevel admin
 AutoCloseWindow True
-OutFile "vchanger-1.0.2.exe"
+OutFile "vchanger-1.0.3.exe"
 
 PageEx license
   LicenseData "license.txt"

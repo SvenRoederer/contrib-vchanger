@@ -3,8 +3,8 @@
 #
 Summary: A virtual autochanger for Bacula
 Name: vchanger
-Version: 1.0.2
-Release: 1.el7
+Version: 1.0.3
+Release: 1%{dist}
 License: GPLv2
 Group: System Environment/Daemons
 Source: http://sourceforge.net/projects/vchanger/files/vchanger/%{version}/vchanger-%{version}.tar.gz
@@ -13,6 +13,9 @@ Vendor: Josh Fisher.
 Packager: Josh Fisher <jfisher@jaybus.com>
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 Requires(post): /bin/mkdir, /bin/chown, /usr/bin/getent, /usr/sbin/useradd, /usr/sbin/groupadd
+
+# For libudev support
+BuildRequires: systemd-devel
 
 %description
 Vchanger implements a virtual autochanger for use with the Bacula open source
@@ -88,6 +91,8 @@ if [ $1 -eq 1 ] ; then
 fi
 
 %changelog
+* Thu May 6 2020 Josh Fisher <jfisher@jaybus.com>
+- Updated to release 1.0.2
 * Thu Jun 14 2018 Josh Fisher <jfisher@jaybus.com>
 - Updated to release 1.0.2
 * Wed Jun 3 2015 Josh Fisher <jfisher@jaybus.com>

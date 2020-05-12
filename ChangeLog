@@ -1,5 +1,14 @@
 vchanger ChangeLog
 
+1.0.3 (2020-05-06)
+  - Redesign locking mechanism for multiple instances using POSIX
+    semaphores.
+  - Use at, rather than nohup, in scripts invoked by udev rules to fix
+    nohup not working as expected on some platforms.
+    (Patch from Steven A. Falco)
+  - Add spec file for Fedora 29 (Provided by Steven A. Falco)
+  - Correct number of slots reported by SIZE command (Fixes bug 17)
+  - Rename logging variables that conflict with cmath's log function (Fixes bug 18)
 1.0.2  (2018-06-14)
   - Use named mutex to prevent instances of vchanger invoked by Bacula during
     a bconsole call from initiating further bconsole calls. Prevents a race

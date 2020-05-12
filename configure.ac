@@ -1,9 +1,9 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ([2.63])
-AC_INIT([vchanger], [1.0.2], [jfisher@jaybus.com])
-AC_DEFINE([COPYRIGHT_NOTICE],["AC_PACKAGE_NAME Copyright (c) 2006-2018 Josh Fisher"],[Copyright notice])
+AC_PREREQ([2.69])
+AC_INIT([vchanger], [1.0.3], [jfisher@jaybus.com])
+AC_DEFINE([COPYRIGHT_NOTICE],["AC_PACKAGE_NAME Copyright (c) 2006-2020 Josh Fisher"],[Copyright notice])
 AC_CONFIG_SRCDIR([src])
 AC_CONFIG_LIBOBJ_DIR([src/compat])
 AC_CONFIG_HEADERS([config.h])
@@ -54,7 +54,7 @@ AC_CHECK_HEADERS_ONCE([time.h sys/time.h sys/timespec.h sys/wait.h limits.h loca
 AC_CHECK_HEADERS_ONCE([sys/types.h strings.h alloca.h sys/bitypes.h getopt.h utime.h sys/stat.h])
 AC_CHECK_HEADERS_ONCE([inttypes.h ctype.h errno.h unistd.h varargs.h mntent.h])
 AC_CHECK_HEADERS_ONCE([sys/param.h sys/mount.h sys/ucred.h grp.h pwd.h dirent.h fcntl.h sys/mman.h])
-AC_CHECK_HEADERS_ONCE([sys/select.h optarg.h pthread.h libgen.h io.h signal.h])
+AC_CHECK_HEADERS_ONCE([sys/select.h optarg.h pthread.h libgen.h io.h signal.h semaphore.h])
 AC_CHECK_HEADER([windows.h],  [AC_DEFINE([HAVE_WINDOWS_H],,[have header windows.h])
    WINLDADD=-static])
 AC_SUBST(WINLDADD)

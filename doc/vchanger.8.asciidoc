@@ -3,7 +3,7 @@ VCHANGER(8)
 Josh Fisher <jfisher@jaybus.com>
 :doctype: manpage
 :man source:   vchanger
-:man version:  1.0.2
+:man version:  1.0.3
 :man manual:   vchanger Manual
 
 NAME
@@ -27,9 +27,11 @@ DESCRIPTION
 The *vchanger(8)* utility is used to emulate and control a virtual
 autochanger within the Bacula network backup system environment.
 Backup volumes stored on multiple disk filesystems are mapped to a
-single set of virtual slots, allowing an unlimited number of virtual
-drives for concurrent backup jobs and easy, unlimited scaling to any
-size by simply adding additional disks/filesystems, 
+single set of virtual slots. This allows an unlimited number of
+virtual drives and an unlimited number of virtual slots spread
+across an unlimited number of physical disk drives to be assigned
+to a single autochanger. This allows unlimited scaling of the cirtual
+autochanger simply by adding additional disk drives. 
 
 Vchanger is primarily deigned for use with removable disk drives. Its
 ability to interact with Bacula and determine removable drive mount
@@ -127,7 +129,7 @@ trigger 'update slots' if needed.
 
 Additionally, when new volumes are created with the *CREATEVOLS* command,
 vchanger will invoke bconsole and issue a 'label barcodes' command to
-write volume labels on the newly created volume files.
+allow Bacula to write volume labels on the newly created volume files.
 
 COMMAND LINE OPTIONS
 --------------------
@@ -173,7 +175,7 @@ SEE ALSO
 
 COPYRIGHT
 ---------
-Copyright 2006-2018 Josh Fisher
+Copyright 2006-2020 Josh Fisher
 
 This is free software;
 See the source for copying conditions.

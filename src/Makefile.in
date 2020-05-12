@@ -91,12 +91,12 @@ CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
 am_vchanger_OBJECTS = getline.$(OBJEXT) gettimeofday.$(OBJEXT) \
-	readlink.$(OBJEXT) symlink.$(OBJEXT) sleep.$(OBJEXT) \
-	syslog.$(OBJEXT) win32_util.$(OBJEXT) uuidlookup.$(OBJEXT) \
-	bconsole.$(OBJEXT) tstring.$(OBJEXT) inifile.$(OBJEXT) \
-	mymutex.$(OBJEXT) mypopen.$(OBJEXT) vconf.$(OBJEXT) \
-	loghandler.$(OBJEXT) errhandler.$(OBJEXT) util.$(OBJEXT) \
-	changerstate.$(OBJEXT) diskchanger.$(OBJEXT) \
+	readlink.$(OBJEXT) semaphore.$(OBJEXT) symlink.$(OBJEXT) \
+	sleep.$(OBJEXT) syslog.$(OBJEXT) win32_util.$(OBJEXT) \
+	uuidlookup.$(OBJEXT) bconsole.$(OBJEXT) tstring.$(OBJEXT) \
+	inifile.$(OBJEXT) mymutex.$(OBJEXT) mypopen.$(OBJEXT) \
+	vconf.$(OBJEXT) loghandler.$(OBJEXT) errhandler.$(OBJEXT) \
+	util.$(OBJEXT) changerstate.$(OBJEXT) diskchanger.$(OBJEXT) \
 	vchanger.$(OBJEXT)
 vchanger_OBJECTS = $(am_vchanger_OBJECTS)
 vchanger_LDADD = $(LDADD)
@@ -269,7 +269,7 @@ AM_CFLAGS = -DLOCALSTATEDIR='"${localstatedir}"'
 AM_CXXFLAGS = -DLOCALSTATEDIR='"${localstatedir}"'
 AM_LDFLAGS = @WINLDADD@
 vchanger_SOURCES = compat/getline.c compat/gettimeofday.c \
-					compat/readlink.c \
+					compat/readlink.c compat/semaphore.c \
 					compat/symlink.c compat/sleep.c compat/syslog.c \
 					win32_util.c uuidlookup.c bconsole.cpp \
 					tstring.cpp inifile.cpp mymutex.cpp mypopen.cpp \
@@ -375,6 +375,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mymutex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mypopen.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/readlink.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/semaphore.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/sleep.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/symlink.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/syslog.Po@am__quote@
@@ -440,6 +441,20 @@ readlink.obj: compat/readlink.c
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='compat/readlink.c' object='readlink.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o readlink.obj `if test -f 'compat/readlink.c'; then $(CYGPATH_W) 'compat/readlink.c'; else $(CYGPATH_W) '$(srcdir)/compat/readlink.c'; fi`
+
+semaphore.o: compat/semaphore.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT semaphore.o -MD -MP -MF $(DEPDIR)/semaphore.Tpo -c -o semaphore.o `test -f 'compat/semaphore.c' || echo '$(srcdir)/'`compat/semaphore.c
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/semaphore.Tpo $(DEPDIR)/semaphore.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='compat/semaphore.c' object='semaphore.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o semaphore.o `test -f 'compat/semaphore.c' || echo '$(srcdir)/'`compat/semaphore.c
+
+semaphore.obj: compat/semaphore.c
+@am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT semaphore.obj -MD -MP -MF $(DEPDIR)/semaphore.Tpo -c -o semaphore.obj `if test -f 'compat/semaphore.c'; then $(CYGPATH_W) 'compat/semaphore.c'; else $(CYGPATH_W) '$(srcdir)/compat/semaphore.c'; fi`
+@am__fastdepCC_TRUE@	$(AM_V_at)$(am__mv) $(DEPDIR)/semaphore.Tpo $(DEPDIR)/semaphore.Po
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	$(AM_V_CC)source='compat/semaphore.c' object='semaphore.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCC_FALSE@	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCC_FALSE@	$(AM_V_CC@am__nodep@)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -c -o semaphore.obj `if test -f 'compat/semaphore.c'; then $(CYGPATH_W) 'compat/semaphore.c'; else $(CYGPATH_W) '$(srcdir)/compat/semaphore.c'; fi`
 
 symlink.o: compat/symlink.c
 @am__fastdepCC_TRUE@	$(AM_V_CC)$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) -MT symlink.o -MD -MP -MF $(DEPDIR)/symlink.Tpo -c -o symlink.o `test -f 'compat/symlink.c' || echo '$(srcdir)/'`compat/symlink.c
