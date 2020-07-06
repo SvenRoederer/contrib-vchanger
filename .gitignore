@@ -1,4 +1,6 @@
 autom4te.cache/
+config.*
 src/.deps/
 src/*.o
+src/vchanger
 stamp-*
